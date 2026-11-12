@@ -204,6 +204,10 @@ You can add these any time. Each one is separate.
   `VITE_VAPID_PUBLIC_KEY` in Netlify and `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` and
   `VAPID_SUBJECT` in Supabase (**Edge Functions > Secrets**). The full list of settings is in
   `.env.example`.
+- **More sign-in emails.** Supabase's built-in email sender only sends a few emails per hour,
+  which is enough to set up and to invite a client now and then. If sign-in codes stop arriving
+  when you invite several clients in a day, connect your own email service in Supabase under
+  **Authentication > Emails > SMTP Settings**.
 - **Email from your own address** (onboarding reminders, digests). Needs a free Resend account:
   set `RESEND_API_KEY` and `EMAIL_FROM` in Supabase **Edge Functions > Secrets**.
 - **Reminders and scheduled jobs.** In Supabase **Edge Functions > Secrets**, add `CRON_SECRET`
