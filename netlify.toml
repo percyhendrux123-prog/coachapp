@@ -1,8 +1,8 @@
-# Added for the MCP connector OAuth surface (branch: mcp-oauth-connector).
-# The site was previously a plain static SPA deploy; this adds a functions dir
-# and serves the OAuth discovery metadata at the origin root.
+# Build: checks settings, builds the app, and on production deploys installs the server
+# functions into Supabase (see scripts/netlify-build.mjs). The functions dir holds the one
+# Netlify function (the AI-connector OAuth surface).
 [build]
-  command = "npm run build"
+  command = "node scripts/netlify-build.mjs"
   publish = "dist"
   functions = "netlify/functions"
 
@@ -27,3 +27,10 @@
   for = "/manifest.webmanifest"
   [headers.values]
     Content-Type = "application/manifest+json"
+
+# "Deploy to Netlify" button: the form asks for these by name. The text is the label shown.
+# Full walkthrough: SETUP.md.
+[template.environment]
+  VITE_SUPABASE_URL = "Supabase Project URL, e.g. https://abcdefghijklmnopqrst.supabase.co (Supabase: Project Settings > Data API)"
+  VITE_SUPABASE_ANON_KEY = "Supabase anon public key, starts with eyJ (Supabase: Project Settings > API Keys > Legacy API Keys)"
+  SUPABASE_ACCESS_TOKEN = "Supabase access token, starts with sbp_, lets the deploy install the server functions (supabase.com/dashboard/account/tokens)"

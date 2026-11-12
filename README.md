@@ -44,14 +44,38 @@ Platform
 - No legal review. The waiver and health screen text in `src/content/` is a starting point, not
   legal advice. Have it reviewed for your jurisdiction before you use it with clients.
 
-## Requirements
+## Get your own copy (no code)
+
+<!-- PUBLISH-TODO: replace PUBLISH-TODO-REPO-URL below and in SETUP.md with the public repo URL,
+     for example https://github.com/<owner>/<repo>. The button only works once the repo is public. -->
+
+[![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=PUBLISH-TODO-REPO-URL)
+
+Three steps: open this page, click the button, follow [SETUP.md](SETUP.md). SETUP.md is written for
+someone who has never deployed anything: free Supabase and Netlify accounts, one database file
+pasted into the Supabase SQL editor, three values pasted into the button's form. No terminal.
+
+The button asks for:
+
+| Name | What it is |
+| --- | --- |
+| `VITE_SUPABASE_URL` | Your Supabase Project URL (Project Settings > Data API) |
+| `VITE_SUPABASE_ANON_KEY` | Your Supabase anon public key, starts with `eyJ` (Project Settings > API Keys > Legacy API Keys) |
+| `SUPABASE_ACCESS_TOKEN` | A Supabase access token, so each production deploy can install the server functions |
+
+On Netlify the build runs `scripts/netlify-build.mjs`: it checks those values and stops with a plain
+message if one is wrong, builds the app, writes the site address into `/.well-known/`, and on
+production deploys installs every function in `supabase/functions/` with the Supabase CLI and sets
+`APP_ORIGIN` / `ALLOWED_ORIGINS`. Set `SKIP_FUNCTION_DEPLOY=1` to deploy functions yourself instead.
+
+## Requirements (developer setup)
 
 - Node.js 20.19+ or 22.12+ and npm
 - A Supabase project and the Supabase CLI
 - A Netlify site and the Netlify CLI (or any static host plus a place to run the one Netlify function)
 - Optional: Stripe, Resend (email), a VAPID key pair (Web Push), Deno (to run the edge function tests)
 
-## Setup
+## Developer setup
 
 1. Install and build locally
 
@@ -68,6 +92,11 @@ Platform
    supabase db push                         # applies supabase/migrations in order
    psql "$DATABASE_URL" -f supabase/seed.sql   # reference vocabulary for intake parsing
    ```
+
+   Without a terminal: paste `supabase/setup/database.sql` into the SQL editor and run it once. It
+   is every migration plus the seed in one transaction, and it records the migrations as applied
+   so a later `supabase db push` only applies new ones. It is generated; after adding a migration
+   run `node scripts/build-setup-sql.mjs` (the test suite fails if you forget).
 
    `00000000000000_initial_schema.sql` creates the full schema, storage buckets and policies. The
    later files are forward migrations. Then create two vault secrets used by scheduled jobs and the
@@ -87,8 +116,8 @@ Platform
 
    Set the `VITE_*` variables and the Netlify function variables from `.env.example` in your site
    settings, then deploy (`netlify deploy --prod --build`, or `npm run deploy:frontend`, which refuses
-   to deploy from a dirty git tree). Update the two files in `public/.well-known/` to your own domain;
-   they describe the OAuth endpoints for AI connectors.
+   to deploy from a dirty git tree). The two files in `public/.well-known/` (OAuth discovery for AI connectors) get the
+   site address written in at build time on Netlify; on another host, edit them to your domain.
 
 5. Make yourself the owner
 
@@ -116,17 +145,9 @@ branch database, not one with real clients in it.
 
 ## Contributing
 
-Changes are welcome.
-
-- Open an issue first for anything larger than a small fix, so the approach can be agreed before
-  you spend time on it.
-- Keep each pull request to one change. Include tests for behavior changes, and make sure
-  `npm run lint`, `npm run build`, `npm test` and `npm run test:edge` pass.
-- Schema changes go in a new file in `supabase/migrations/`. Never edit a migration that has
-  already been released.
-- Never commit real client data, keys or secrets, including in test fixtures. Use `example.com`
-  addresses and invented names.
-- Security problems: see `SECURITY.md` instead of opening a public issue.
+Changes are welcome. Open an issue first for anything larger than a small fix, keep each pull
+request to one change with tests, and never commit real client data or secrets. The full guide is in
+[CONTRIBUTING.md](CONTRIBUTING.md). Security problems: see [SECURITY.md](SECURITY.md).
 
 ## License
 

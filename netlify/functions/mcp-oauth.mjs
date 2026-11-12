@@ -20,13 +20,15 @@
 //   - PKCE (S256) is required; auth codes are single-use, 5-min TTL, stored
 //     server-side (oauth_codes) and deleted on exchange.
 
-const SUPABASE_URL = process.env.SUPABASE_URL || "";
+// Fallbacks let a one-click deploy work with only the VITE_ values set: URL is the
+// site address Netlify provides to functions at runtime.
+const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "";
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 const SUPABASE_ANON_KEY =
   process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || "";
 const MCP_UPSTREAM =
   process.env.MCP_UPSTREAM || `${SUPABASE_URL}/functions/v1/mcp`;
-const ISSUER = process.env.OAUTH_ISSUER || "http://localhost:8888";
+const ISSUER = process.env.OAUTH_ISSUER || process.env.URL || "http://localhost:8888";
 
 // Tool names with NO write flag in supabase/functions/mcp/index.ts — kept in sync by hand,
 // used ONLY to decide whether a gateway failure is safe to retry (see GATEWAY_RETRY_STATUSES

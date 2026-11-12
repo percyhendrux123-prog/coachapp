@@ -1,0 +1,5 @@
+# This function does its own authorization (see the header of index.ts), so the Supabase
+# gateway must not demand a signed-in user first: callers include webhooks, scheduled jobs,
+# public sign-up pages or tokens that are not Supabase sessions.
+[verify_jwt]
+enabled = false
