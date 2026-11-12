@@ -1,7 +1,7 @@
 // Behavioral tests for the check-in v2 generator core. Pure-function rules are
 // tested directly; assessCheckin() is tested against a recorded fake db plus a
 // stubbed Anthropic fetch call — not a live-database or live-API integration test.
-import { assessCheckin, buildSystemPrompt, buildUserPrompt, daysOut, validateResult } from "./checkinAssess.ts";
+import { assessCheckin, assessmentSkipReason, buildSystemPrompt, buildUserPrompt, daysOut, validateResult } from "./checkinAssess.ts";
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
@@ -183,4 +183,10 @@ Deno.test("assessCheckin: happy path writes summary_model, never writes confirme
     assert(!("confirmed_by" in row), "generator must never write confirmed_by");
     assert(upserts[0].opts?.onConflict === "checkin_id", "must upsert on checkin_id, matching the table's unique constraint");
   } finally { restore(); }
+});
+
+Deno.test("assessmentSkipReason: no key means the optional read is skipped, not a failure", () => {
+  assert(assessmentSkipReason(() => undefined) === "not_configured", "unset key should skip");
+  assert(assessmentSkipReason(() => "   ") === "not_configured", "blank key should skip");
+  assert(assessmentSkipReason(() => "test-key-not-real") === null, "a set key should run");
 });

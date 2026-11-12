@@ -2056,10 +2056,10 @@ function AccountInviteButton({ client }) {
   );
 }
 
-// Sign-in code, read over the phone. For the client who cannot find the email — 2026-09-05,
-// a client in her 70s on a tablet in the Philippines had no other way in. The coach taps, the
-// code shows large, the coach reads it. The client taps "I already have a code" on the sign-in
-// screen; if she taps "Send sign-in code" instead, that request replaces this code and the
+// Sign-in code, read over the phone. For the client who cannot find the email, or whom the
+// project's mailer cannot reach. The coach taps, the code shows large, the coach reads it.
+// The client taps "I already have a code" on the sign-in screen; if they tap "Send sign-in
+// code" instead, that request replaces this code and the
 // coach taps again. Every issuance is written to notification_log by the function.
 function SigninCodeButton({ client }) {
   const [state, setState] = useState(null); // null | { code, linked, audit_logged } | error text

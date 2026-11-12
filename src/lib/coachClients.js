@@ -123,8 +123,9 @@ export async function createClientInvite(clientId) {
   // Goes through the client-invite edge function rather than writing the token
   // directly, because minting an invite must ALSO create the client's auth account
   // server-side (only the service role can do that). With the account pre-created,
-  // the client's magic link works even once public signups are disabled — without
-  // it, closing signups would reject every first-time client as if they were a
+  // the client's code request still works when the coach turns sign-ups off (the app
+  // then falls back to a signup-confirmation email; see src/lib/emailAuth.js). Without
+  // it, closing sign-ups would reject every first-time client as if they were a
   // stranger. See supabase/functions/client-invite/index.ts.
   const { data, error } = await supabase.functions.invoke("client-invite", {
     body: { client_id: clientId },

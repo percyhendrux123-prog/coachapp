@@ -29,8 +29,8 @@ export default function Framework() {
     return (
       <main className="mx-auto max-w-2xl px-5 py-10">
         <span className="kicker">Content</span>
-        <h1 className="display mt-2 text-3xl">This page is not built.</h1>
-        <p className="mt-3 text-sm opacity-70">That card pointed at a route that does not exist.</p>
+        <h1 className="display mt-2 text-3xl">Page not found</h1>
+        <p className="mt-3 text-sm opacity-70">There is no resource at this address. Check the link, or go back to your content.</p>
         <Link to="/client" className="btn-primary mt-6 inline-flex min-h-[44px] items-center px-4">
           Back
         </Link>

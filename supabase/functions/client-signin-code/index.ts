@@ -5,10 +5,11 @@
 //   → { code, email, account: "created" | "existed", linked: "linked" | "already", profile: "created" | "existed", audit_logged }
 // GET → health check.
 //
-// WHY THIS EXISTS. 2026-09-05: a new client in her 70s, on a tablet in the Philippines, could
-// not find the emailed code. There was no other way in — passwords are off project-wide, the
-// code lives only in the email, and nobody (coach, dashboard, agent) could see it. This is the
-// other way in: the coach vouches for the person on the phone and reads them the code.
+// WHY THIS EXISTS. Some clients cannot find the emailed code (spam folder, a shared tablet, an
+// email the project's mailer is not allowed to reach). There was no other way in: the app has
+// no passwords, the code lives only in the email, and nobody (coach, dashboard, agent) could
+// see it. This is the other way in: the coach vouches for the person on the phone and reads
+// them the code.
 //
 // HOW. auth.admin.generateLink({ type: "magiclink" }) returns the same one-time code the email
 // would have carried (properties.email_otp). The client types it on the sign-in screen behind
@@ -25,7 +26,7 @@
 // (AuthCallback reads profiles.role). claim_client_invite() and link_client_by_email() both mint
 // the client profile when they attach a row — but they only run for a row that is still
 // unattached, and this function attaches first, so neither ever fires for a code-issued account.
-// Found 2026-09-05 on the first live proof: account created, row attached, sign-in accepted,
+// Found on the first real-world proof: account created, row attached, sign-in accepted,
 // then "this email isn't linked as a coach or client yet". The profile is minted here, same
 // shape, idempotent. An account that already carries a non-client role is refused, as the
 // claim path refuses it (role_conflict).
@@ -95,8 +96,8 @@ Deno.serve(async (req) => {
     } else {
       account = "created";
       uid = made?.user?.id ?? null;
-      // createUser writes a bcrypt hash even with no password supplied. Passwords are
-      // disabled project-wide; strip it so that property does not erode one client at a time.
+      // createUser writes a bcrypt hash even with no password supplied. The app never uses
+      // passwords; strip it so that property does not erode one client at a time.
       if (uid) {
         const { error: pwErr } = await db.rpc("auth_clear_password", { p_user_id: uid });
         if (pwErr) return json({ error: "account create: password strip failed: " + pwErr.message }, 500);

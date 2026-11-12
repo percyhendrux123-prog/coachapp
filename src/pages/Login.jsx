@@ -6,15 +6,8 @@ import { applyTheme } from "../lib/theme";
 import { DEFAULT_BRAND_COLOR } from "../lib/settings";
 import { readableTextOn, accessibleForegroundOn } from "../lib/colorContrast";
 import AppGate from "../components/AppGate";
+import { CONFIRMATION_SENT_HINT, friendlyAuthError } from "../lib/emailAuth";
 
-// Turn raw Supabase auth errors into calm, honest copy. The email-send rate limit
-// (project-wide, HTTP 429) is the one a real user is most likely to hit.
-function friendlyAuthError(error) {
-  if (error?.code === "over_email_send_rate_limit" || error?.status === 429) {
-    return "We've hit our email limit for the moment — please wait a few minutes and try again. This is a temporary limit, not a problem with your account.";
-  }
-  return error?.message || "Something went wrong — please try again.";
-}
 
 export default function Login() {
   const navigate = useNavigate();
@@ -25,6 +18,7 @@ export default function Login() {
   const [sent, setSent] = useState(false);
   const [err, setErr] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [hint, setHint] = useState(null);
   // undefined = no slug in the URL (plain /login); null = slug given but no such
   // active coach — those are different facts and must not collapse into one screen.
   const [brand, setBrand] = useState(slug ? undefined : null);
@@ -63,9 +57,9 @@ export default function Login() {
   async function submit(e) {
     e.preventDefault();
     setErr(null); setBusy(true);
-    const { error } = await requestEmailCode(email.trim());
+    const { error, via } = await requestEmailCode(email.trim());
     if (error) setErr(friendlyAuthError(error));
-    else setSent(true);
+    else { setSent(true); setHint(via === "confirmation" ? CONFIRMATION_SENT_HINT : null); }
     setBusy(false);
   }
 
@@ -113,6 +107,7 @@ export default function Login() {
             <p className="text-sm opacity-70">
               Enter the 6-digit code for <strong>{email.trim()}</strong> — from your email, or the one your coach gave you. Keep this coaching app window open.
             </p>
+            {hint && <p className="text-xs leading-relaxed opacity-60">{hint}</p>}
             <label className="block text-sm">
               <span className="mb-1 block opacity-60">Email code</span>
               <input

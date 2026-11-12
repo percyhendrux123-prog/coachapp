@@ -12,7 +12,7 @@ export default function KnowledgeCard({ compact = false }) {
       >
         <span className="min-w-0">
           <span className="text-sm font-semibold">Knowledge</span>
-          <span className="ml-2 text-xs opacity-60">Signaling molecules. Not a shop.</span>
+          <span className="ml-2 text-xs opacity-60">Articles and guidance from your coach.</span>
         </span>
         <span className="shrink-0 text-xs font-semibold uppercase tracking-[0.12em] text-brand-fg">Open →</span>
       </Link>
@@ -24,9 +24,9 @@ export default function KnowledgeCard({ compact = false }) {
       className="glass mt-6 block p-4 transition hover:border-brand/30"
     >
       <span className="kicker">Knowledge</span>
-      <p className="display mt-1 text-xl">What this is.</p>
+      <p className="display mt-1 text-xl">Your knowledge library</p>
       <p className="mt-2 max-w-[42ch] text-sm leading-relaxed opacity-60">
-        Signaling molecules. Not a shop.
+        A placeholder for your own articles and guidance for clients.
       </p>
       <p className="mt-3 text-xs font-semibold uppercase tracking-[0.12em] text-brand-fg">
         Open →

@@ -62,7 +62,10 @@ test("the repo's functions keep the gateway settings the code expects", () => {
     assert.ok(noVerify.includes(name), `${name} should deploy with --no-verify-jwt`);
   }
   assert.ok(verify.includes("mcp"));
-  assert.equal(verify.length + noVerify.length, 27);
+  // 26: dm-inbound (an Instagram-DM sales pipeline whose tables no migration ever created)
+  // was removed from the open-source copy.
+  assert.equal(verify.length + noVerify.length, 26);
+  assert.ok(!verify.includes("dm-inbound") && !noVerify.includes("dm-inbound"));
 });
 
 test("rewriteWellKnown puts the site address into the discovery files", () => {

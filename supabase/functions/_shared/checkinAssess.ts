@@ -165,6 +165,12 @@ function buildUserPrompt({ checkin, tenantQuestions, client, priorCheckins, corr
   return lines.join("\n");
 }
 
+// The check-in read is optional: an install without ANTHROPIC_API_KEY simply has no
+// AI read. Returns why the generator will not run, or null when it can.
+export function assessmentSkipReason(getEnv: (k: string) => string | undefined = (k) => Deno.env.get(k)): string | null {
+  return (getEnv("ANTHROPIC_API_KEY") || "").trim() ? null : "not_configured";
+}
+
 // Calls Anthropic and returns the validated tool-call arguments, or throws.
 async function callGenerator(promptInput: any) {
   const apiKey = Deno.env.get("ANTHROPIC_API_KEY") || "";

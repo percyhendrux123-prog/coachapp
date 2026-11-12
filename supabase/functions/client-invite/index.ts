@@ -6,32 +6,31 @@
 // POST { client_id, account_only: true } → { account, claim_path: null } (no token minted; Slice 3 Release)
 // GET → health check.
 //
-// WHY THIS EXISTS. Previously the coach's invite button only wrote an invite token
-// to the clients row; the client's auth account was created later, as a side effect
-// of the magic-link request itself (supabase.auth.signInWithOtp defaults to
-// shouldCreateUser: true). That made account creation open to anyone: a stranger
-// with no invite could POST /auth/v1/otp with the public anon key and get a real
-// account. Measured on the live API: HTTP 200, account created.
+// WHY THIS EXISTS. With "Allow new users to sign up" ON, anyone holding the public
+// anon key can create an (empty) account by requesting a code: signInWithOtp
+// defaults to shouldCreateUser: true. The claim rules keep client data out of reach
+// of such an account, but a coach may still want sign-ups OFF. With sign-ups off,
+// an invited first-time client must still get in, and that only works if their
+// account exists before they ask for a code. So the account is created here, at
+// invite time.
 //
-// Closing that door means disabling signups in Supabase Auth. But with signups
-// disabled, the SAME call that onboards an invited first-time client is refused:
-//   stranger, signup closed  -> 422 otp_disabled "Signups not allowed for otp"
-// …and an invited client is indistinguishable from a stranger until their account
-// exists. So turning the setting off without this function would silently break
-// the most important funnel in the app.
+// It is created UNCONFIRMED, so the client still has to prove control of the
+// mailbox: entering the emailed code is what confirms them, and
+// claim_client_invite() requires email_confirmed_at before it will link anyone.
 //
-// Creating the account here, at invite time, removes that dependency: by the time
-// the client clicks their magic link the account already exists, and an existing
-// account is served normally even with signups closed. Measured:
-//   pre-existing CONFIRMED account,   signup closed -> 200, link sent
-//   pre-existing UNCONFIRMED account, signup closed -> 200, link sent
-// The unconfirmed case is the one that matters, and it works — so accounts are
-// created UNCONFIRMED here. The client still proves control of the mailbox by
-// clicking the link, which is what confirms them, and claim_client_invite()
-// continues to require email_confirmed_at before it will link anyone.
+// What Supabase Auth does with that account (measured on GoTrue v2.197.0, sign-ups
+// OFF, "Confirm email" ON):
+//   POST /otp    unconfirmed invited account -> 422 signup_disabled (no email)
+//   POST /otp    address with no account     -> 422 signup_disabled (nothing created)
+//   POST /resend type=signup, unconfirmed    -> 200, "Confirm signup" email with the code
+//   POST /resend type=signup, no account     -> 200, no email, nothing created
+// So the app's code request (src/lib/emailAuth.js) falls back to /resend when /otp
+// answers signup_disabled. Older GoTrue versions served /otp for an unconfirmed
+// account; do not rely on that. Whether sign-ups are on or off is a per-project
+// setting: read it at /auth/v1/settings (disable_signup), not from a comment.
 //
-// No password is ever set. Passwords are disabled project-wide (every hash was
-// cleared); admin.createUser without a password keeps it that way.
+// No password is ever set. The app signs people in with email codes only and never
+// offers a password; admin.createUser without a password keeps it that way.
 import { admin, callerUserId, json, CORS } from "../_shared/challenge.ts";
 
 const INVITE_TTL_DAYS = 14;
@@ -92,7 +91,7 @@ Deno.serve(async (req) => {
       } else {
         account = "created";
         // createUser writes a bcrypt hash even though no password was supplied.
-        // Passwords are disabled project-wide, so strip it — otherwise the
+        // The app never uses passwords, so strip it — otherwise the
         // property erodes one invite at a time. Reported, never swallowed.
         const uid = made?.user?.id;
         if (uid) {

@@ -10,7 +10,7 @@
 // POST { checkin_id }  (Bearer JWT required; caller must be the client who owns it)
 // GET → health check.
 import { admin, callerUserId, json, CORS } from "../_shared/challenge.ts";
-import { assessCheckin } from "../_shared/checkinAssess.ts";
+import { assessCheckin, assessmentSkipReason } from "../_shared/checkinAssess.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
@@ -31,13 +31,18 @@ Deno.serve(async (req) => {
   const { data: client } = await db.from("clients").select("client_user_id").eq("id", checkin.client_id).maybeSingle();
   if (!client || client.client_user_id !== userId) return json({ error: "not your checkin" }, 403);
 
+  // Optional feature. Without an Anthropic key there is nothing to generate: answer
+  // plainly instead of a 500 on every check-in a client submits.
+  const skip = assessmentSkipReason();
+  if (skip) return json({ ok: true, skipped: skip });
+
   try {
     const result = await assessCheckin(db, checkin_id);
     return json(result);
   } catch (e: any) {
     // Best-effort by design — the caller (submitCheckin's fire-and-forget) already
     // treats this as non-blocking, but a 500 here still shows up in function logs
-    // so a persistently failing generator (e.g. no API key set yet) is visible to
+    // so a persistently failing generator (bad key, provider outage) is visible to
     // whoever's watching, not just silently absent forever.
     console.error("checkin-assess failed", checkin_id, e?.message || e);
     return json({ error: String(e?.message || e) }, 500);

@@ -53,6 +53,7 @@ import { useClientAccountBranding } from "../lib/useClientAccountBranding";
 import { whiteLabelOwnedSurfaces } from "../lib/tenantIdentity";
 import ClientMessageComposer, { ClientMessageThread } from "../components/ClientMessageComposer";
 import SubstituteRequest from "../components/SubstituteRequest";
+import { formatHeight, formatWeight, KEEP_CASE } from "../lib/profileDisplay";
 
 const CARDIO_MACHINES_IMAGE = "/assets/cardio-machines.jpg";
 const CARDIO_TERMS = [
@@ -3602,24 +3603,9 @@ function ProfileTab({ me, branding, userEmail, ctx, userId, mode }) {
 
   const units = (me.unit_pref || "imperial").toLowerCase();
   const imperial = units === "imperial" || units === "us" || units === "lb";
-  const height =
-    imperial && me.height_in != null
-      ? `${me.height_in} in`
-      : me.height_cm != null
-        ? `${me.height_cm} cm`
-        : null;
-  const weight =
-    imperial && me.weight_lb != null
-      ? `${me.weight_lb} lb`
-      : me.weight_kg != null
-        ? `${me.weight_kg} kg`
-        : null;
-  const goal =
-    imperial && me.goal_weight_lb != null
-      ? `${me.goal_weight_lb} lb`
-      : me.goal_weight_kg != null
-        ? `${me.goal_weight_kg} kg`
-        : null;
+  const height = formatHeight({ imperial, height_in: me.height_in, height_cm: me.height_cm });
+  const weight = formatWeight({ imperial, lb: me.weight_lb, kg: me.weight_kg });
+  const goal = formatWeight({ imperial, lb: me.goal_weight_lb, kg: me.goal_weight_kg });
 
   const dow = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   const checkinDay =
@@ -3660,7 +3646,7 @@ function ProfileTab({ me, branding, userEmail, ctx, userId, mode }) {
         {rows.map(([label, value]) => (
           <div key={label} className="flex items-baseline justify-between gap-4 px-4 py-2.5 text-sm">
             <dt className="shrink-0 opacity-60">{label}</dt>
-            <dd className="text-right font-medium capitalize">
+            <dd className={`text-right font-medium ${KEEP_CASE.has(label) ? "break-words" : "capitalize"}`}>
               {value ? String(value) : <span className="font-normal italic opacity-60">Not set</span>}
             </dd>
           </div>

@@ -16281,6 +16281,158 @@ reset check_function_bodies;
 reset client_min_messages;
 reset row_security;
 
+-- ===== migration 20261112180000_link_by_email_completes_invite.sql =====
+-- link_client_by_email() completes the invite the same way claim_client_invite() does.
+--
+-- The auth.users triggers (link_client_on_insert / link_client_on_confirm) call
+-- link_client_by_email() the moment an invited client confirms their email by entering
+-- their first code. That runs BEFORE the claim page calls claim_client_invite(), which
+-- then sees the row already attached and answers 'already_yours' without touching it.
+-- Before this file the row was attached but kept status 'invited' and a live invite
+-- token: the coach's roster said "Invited" for a client who was already training.
+--
+-- Now linking by a confirmed email also flips 'invited' to 'active', as
+-- claim_client_invite() does. Other statuses (paused, archived) are left alone. The invite
+-- token is deliberately kept: the claim page calls claim_client_invite() right after, and
+-- with the token still on the row it answers 'already_yours' (the "you're all set"
+-- screen) instead of 'invalid'. The row is attached, so the token cannot attach anyone
+-- else (any other account gets 'already_claimed'), and the next invite replaces it. Only the trigger path runs this, and the triggers
+-- fire only on a confirmed email, so the mailbox proof is unchanged.
+create or replace function public.link_client_by_email(p_user_id uuid, p_email text)
+ returns integer
+ language plpgsql
+ security definer
+ set search_path to 'public'
+as $function$
+declare
+  v_linked int;
+  v_tenant uuid;
+begin
+  if p_email is null or p_user_id is null then return 0; end if;
+  -- clients_user_unique: one auth user <-> at most one clients row (schema-enforced).
+  -- An already-linked user never claims another row; a multi-tenant email links the
+  -- oldest matching row only.
+  if exists (select 1 from public.clients where client_user_id = p_user_id) then
+    return 0;
+  end if;
+
+  update public.clients c
+     set client_user_id    = p_user_id,
+         status            = case when c.status = 'invited' then 'active'::client_status else c.status end,
+         updated_at        = now()
+   where c.id = (
+     select id from public.clients
+      where client_user_id is null and lower(email) = lower(p_email)
+      order by joined_at asc limit 1
+   );
+  get diagnostics v_linked = row_count;
+
+  if v_linked > 0 and not exists (select 1 from public.profiles where user_id = p_user_id) then
+    select tenant_id into v_tenant
+      from public.clients where client_user_id = p_user_id limit 1;
+    insert into public.profiles (user_id, role, tenant_id)
+    values (p_user_id, 'client', v_tenant)
+    on conflict (user_id) do nothing;
+  end if;
+  return v_linked;
+end;
+$function$;
+
+reset search_path;
+reset check_function_bodies;
+reset client_min_messages;
+reset row_security;
+
+-- ===== migration 20261112190000_lock_function_execute_grants.sql =====
+-- Who may call which database function (EXECUTE grants).
+--
+-- On a real Supabase project every function created in the public schema is executable by
+-- anon and authenticated through default privileges, unless a migration takes that back.
+-- The initial schema was rebuilt on plain Postgres, where those default grants do not exist,
+-- so its "REVOKE ... FROM PUBLIC" lines looked sufficient there and are not on Supabase.
+-- Measured on a fresh Supabase stack before this file: 33 SECURITY DEFINER functions were
+-- callable with only the public anon key, among them
+--   link_client_by_email(user_id, email)  -> attach ANY unclaimed client row to any account
+--   auth_user_id_by_email(email)          -> look up anyone's account id by email
+--   auth_clear_password(user_id)          -> write auth.users
+--   schedule_client_checkins(client_id)   -> its owner check treats "no user" as the server
+-- The original production project allowed only seven SECURITY DEFINER functions to anon.
+--
+-- 1. anon keeps EXECUTE only on the SECURITY DEFINER functions RLS policies and the signed-out
+--    screens need. Everything else is revoked from PUBLIC and anon; authenticated keeps
+--    whatever it had (re-granted explicitly, because revoking PUBLIC can remove it).
+-- 2. Server-only helpers lose authenticated too. Only the service role (edge functions) and
+--    the auth trigger call them.
+-- 3. A new function added later gets Supabase's default grants again. Re-run the block in
+--    step 1 (or write the revoke in that migration) when adding a SECURITY DEFINER function.
+do $$
+declare
+  r record;
+  keep_anon constant text[] := array[
+    'current_app_role', 'current_client_id', 'current_tenant_id', 'get_app_config',
+    'tenant_is_suspended'
+  ];
+  had_auth boolean;
+begin
+  for r in
+    select p.oid, p.oid::regprocedure as sig, p.proname
+      from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+     where n.nspname = 'public' and p.prosecdef and p.prokind = 'f'
+       and p.prorettype <> 'trigger'::regtype
+       and not (p.proname = any (keep_anon))
+  loop
+    had_auth := has_function_privilege('authenticated', r.oid, 'execute');
+    execute format('revoke execute on function %s from public, anon', r.sig);
+    if had_auth then
+      execute format('grant execute on function %s to authenticated', r.sig);
+    end if;
+    execute format('grant execute on function %s to service_role', r.sig);
+  end loop;
+end $$;
+
+revoke execute on function public.link_client_by_email(uuid, text)      from public, anon, authenticated;
+revoke execute on function public.auth_user_id_by_email(text)            from public, anon, authenticated;
+revoke execute on function public.auth_clear_password(uuid)              from public, anon, authenticated;
+revoke execute on function public.custom_access_token_hook(jsonb)        from public, anon, authenticated;
+revoke execute on function public.onboarding_add_blocker(uuid, text, text, text) from public, anon, authenticated;
+revoke execute on function public.onboarding_clear_blockers(uuid, text[])        from public, anon, authenticated;
+revoke execute on function public.onboarding_recompute_stage(uuid)               from public, anon, authenticated;
+revoke execute on function public.publish_program_draft(uuid)            from public, anon, authenticated;
+
+grant execute on function public.link_client_by_email(uuid, text)  to service_role;
+grant execute on function public.auth_user_id_by_email(text)        to service_role;
+grant execute on function public.auth_clear_password(uuid)          to service_role;
+grant execute on function public.custom_access_token_hook(jsonb)    to service_role, supabase_auth_admin;
+grant execute on function public.onboarding_add_blocker(uuid, text, text, text) to service_role;
+grant execute on function public.onboarding_clear_blockers(uuid, text[])        to service_role;
+grant execute on function public.onboarding_recompute_stage(uuid)               to service_role;
+grant execute on function public.publish_program_draft(uuid)        to service_role;
+
+reset search_path;
+reset check_function_bodies;
+reset client_min_messages;
+reset row_security;
+
+-- ===== migration 20261112200000_workout_logs_cardio_fields.sql =====
+-- Cardio actuals on workout_logs: duration_seconds and distance_meters.
+--
+-- The app reads and writes these two columns everywhere a set is logged or shown (client
+-- Train and History, coach client detail, the MCP log_workout_on_behalf tool), but no
+-- migration ever created them; the original project added them outside the migration
+-- files. On a fresh install every workout_logs read failed with 42703 "column
+-- workout_logs.duration_seconds does not exist", so "last time" weights, history and the
+-- coach's session view came back empty, and saving a set failed. Intensity reuses rpe.
+alter table public.workout_logs add column if not exists duration_seconds integer;
+alter table public.workout_logs add column if not exists distance_meters numeric;
+
+comment on column public.workout_logs.duration_seconds is 'Cardio actual: duration in seconds. Null for strength sets.';
+comment on column public.workout_logs.distance_meters  is 'Cardio actual: distance in meters. Null for strength sets.';
+
+reset search_path;
+reset check_function_bodies;
+reset client_min_messages;
+reset row_security;
+
 -- ===== seed.sql =====
 -- Reference vocabulary for intake parsing and meal-library filtering.
 -- Generic data, no client or coach content. Safe to re-run (on conflict do nothing).
@@ -16480,7 +16632,10 @@ insert into supabase_migrations.schema_migrations (version, name) values
   ('20260908120000', 'challenge_capacity_and_coach_runs'),
   ('20260910073500', 'connector_coach_tokens_allow_read_write'),
   ('20260918110000', 'upgrade_coach_tenant_admin'),
-  ('20260920210000', 'publish_refuses_to_replace_coach_built_program')
+  ('20260920210000', 'publish_refuses_to_replace_coach_built_program'),
+  ('20261112180000', 'link_by_email_completes_invite'),
+  ('20261112190000', 'lock_function_execute_grants'),
+  ('20261112200000', 'workout_logs_cardio_fields')
 on conflict (version) do nothing;
 
 -- The SQL editor shows the result of the last statement.

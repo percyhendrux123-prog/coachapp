@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { claimInvite } from "../lib/claim";
+import { CONFIRMATION_SENT_HINT, friendlyAuthError } from "../lib/emailAuth";
 
 // Account-claim landing for a coach-generated invite link (/claim?token=…).
 // Not authenticated → verify an emailed code HERE (token preserved), so the
@@ -11,7 +12,7 @@ import { claimInvite } from "../lib/claim";
 const OK = new Set(["claimed", "already_yours"]);
 const MESSAGES = {
   claimed: "You're all set — your coaching account is ready.",
-  already_yours: "This account is already linked to you.",
+  already_yours: "You're all set — your coaching account is ready.",
   expired: "This invite link has expired. Ask your coach to send a new one.",
   invalid: "This invite link is invalid or has already been used. Ask your coach for a fresh link.",
   already_claimed: "This invite has already been claimed by another account.",
@@ -31,6 +32,7 @@ export default function Claim() {
   const [sent, setSent] = useState(false);
   const [status, setStatus] = useState(null); // claim RPC result
   const [err, setErr] = useState(null);
+  const [hint, setHint] = useState(null);
 
   // Once authenticated, attempt the claim exactly once.
   const runClaim = useCallback(async () => {
@@ -73,9 +75,9 @@ export default function Claim() {
     e.preventDefault();
     setErr(null);
     const redirect = `${window.location.origin}/claim?token=${encodeURIComponent(token)}`;
-    const { error } = await requestEmailCode(email.trim(), redirect);
-    if (error) setErr(error.message);
-    else setSent(true);
+    const { error, via } = await requestEmailCode(email.trim(), redirect);
+    if (error) setErr(friendlyAuthError(error));
+    else { setSent(true); setHint(via === "confirmation" ? CONFIRMATION_SENT_HINT : null); }
   }
 
   async function confirm(e) {
@@ -95,6 +97,7 @@ export default function Claim() {
       {sent ? (
         <form onSubmit={confirm} className="mt-6 space-y-3">
           <p className="text-sm opacity-70">Enter the 6-digit code from your email here. Keep this coaching app open.</p>
+          {hint && <p className="text-xs leading-relaxed opacity-60">{hint}</p>}
           <label className="block text-sm">
             <span className="mb-1 block opacity-60">Email code</span>
             <input

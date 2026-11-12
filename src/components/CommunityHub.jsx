@@ -2,10 +2,12 @@ import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { listPosts, createPost, listComments, addComment, getMyReaction, toggleReaction } from "../lib/community";
 import TenantMark from "./TenantMark";
+import { communityCopy } from "../lib/communityCopy";
 
 // Shared Community body. Coach page wraps this. Client tab renders it in-shell.
 // No video dump here — Brief and Videos already own the reel and the shelf.
 export default function CommunityHub({ ctx, brand }) {
+  const copy = communityCopy(ctx?.role);
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState(null);
@@ -24,9 +26,7 @@ export default function CommunityHub({ ctx, brand }) {
       <div>
         <span className="kicker">Room</span>
         <h2 className="display mt-1 text-2xl">Community</h2>
-        <p className="mt-1 text-xs opacity-60">
-          Coach posts. You read, react, comment. Reels live on Brief and Videos.
-        </p>
+        <p className="mt-1 text-xs opacity-60">{copy.intro}</p>
       </div>
 
       <section className="glass p-4">
@@ -62,7 +62,7 @@ export default function CommunityHub({ ctx, brand }) {
           </p>
         )}
         {!loading && !err && posts.length === 0 && (
-          <p className="mt-3 text-sm opacity-60">No posts yet. When your coach writes, it lands here.</p>
+          <p className="mt-3 text-sm opacity-60">{copy.empty}</p>
         )}
         <div className="mt-4 space-y-3">
           {posts.map((p) => <Post key={p.id} post={p} ctx={ctx} />)}

@@ -12,7 +12,7 @@
 // import, deferring that chain to call time (same pattern Client.jsx/CoachCockpit.jsx
 // already use for lazy fixture loading).
 
-// Six fixed chips, free text in the DB (same precedent as dm_inbound.keyword_tag —
+// Six fixed chips, free text in the DB (free text by design —
 // changing the set later is a UI edit, not a migration). "Skip" sends both as null,
 // which is a real, first-class choice — not a default standing in for a value.
 export const REASON_CHIPS = [
