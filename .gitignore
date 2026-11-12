@@ -1,0 +1,48 @@
+# deps
+node_modules/
+.pnp
+.pnp.js
+
+# build output
+dist/
+dist-ssr/
+preview-dist/
+build/
+*.local
+
+# Vite's own auto-generated temp config, left behind by some build/dev runs.
+# Harmless, but it counts as "dirty" for the build-stamp guard.
+vite.config.js.timestamp-*.mjs
+
+# env / secrets — NEVER commit
+.env
+.env.*
+!.env.example
+*.pem
+.supabase-db-password
+secrets/
+
+# supabase local
+.branches
+.temp
+supabase/.temp/
+
+# editor / os
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# misc
+coverage/
+.cache/
+
+# local working output — never commit.
+outputs/
+
+# Local Netlify folder
+.netlify

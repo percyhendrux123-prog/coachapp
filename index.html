@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content" />
+    <title>Coaching app</title>
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#0d0d0d" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Coaching" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <!-- Pre-paint dark-mode guard: applies the saved mode (default-theme palette) before
+         the bundle loads so there's no light flash; the tenant theme refines it after. -->
+    <script>
+      try {
+        if (localStorage.getItem("coachapp-theme") === "dark") {
+          var r = document.documentElement;
+          r.dataset.theme = "dark";
+          r.style.setProperty("--ink-rgb", "242 242 242");
+          r.style.setProperty("--paper-rgb", "13 13 13");
+        }
+      } catch (e) {}
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

@@ -1,0 +1,46 @@
+{
+  "name": "coachapp",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Coaching delivery app: programs, nutrition, check-ins, messaging, challenges, white-label tenants.",
+  "scripts": {
+    "dev": "vite",
+    "test": "node --test $(find src netlify supabase/functions -name '*.test.js' -o -name '*.test.mjs' | grep -v node_modules)",
+    "test:edge": "deno test --allow-all --no-check supabase/functions",
+    "test:auth": "node --test src/lib/emailAuth.test.js",
+    "test:oauth": "node --test netlify/mcp-oauth.test.mjs",
+    "test:messages": "NODE_ENV=test node --test src/lib/clientMessagePresence.test.js src/lib/coachUiWrites.test.js src/pages/ClientMessageLifecycle.test.js supabase/functions/mcp/messageReadContract.test.js",
+    "test:white-label": "node --test src/lib/tenantIdentity.test.js src/lib/whiteLabelBehavior.test.js src/lib/whiteLabelIsolation.test.js",
+    "test:attribution": "node --test src/lib/attribution.test.js",
+    "test:render": "node --test src/pages/*.render.test.mjs",
+    "build": "vite build",
+    "build:preview": "vite build --mode fixture-preview",
+    "preview": "vite preview --port 4173",
+    "lint": "eslint .",
+    "deploy:fn": "node scripts/deploy-function.mjs",
+    "deploy:frontend": "node scripts/deploy-frontend.mjs"
+  },
+  "dependencies": {
+    "@fontsource-variable/archivo": "^5.3.0",
+    "@fontsource/bebas-neue": "^5.3.0",
+    "@supabase/supabase-js": "^2.45.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "7.18.2"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@vitejs/plugin-react": "6.0.5",
+    "autoprefixer": "^10.4.20",
+    "eslint": "10.8.1",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "eslint-plugin-react-refresh": "0.5.4",
+    "globals": "17.11.0",
+    "postcss": "^8.4.47",
+    "react-test-renderer": "^18.3.1",
+    "tailwindcss": "^3.4.14",
+    "vite": "8.2.1"
+  },
+  "license": "MIT"
+}

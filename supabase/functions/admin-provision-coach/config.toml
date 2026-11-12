@@ -1,0 +1,9 @@
+# This function handles its own auth (callerUserId() validates the JWT and
+# checks the caller is the owner-tenant coach) — same as every other
+# self-auth function in this repo. Without this, Supabase's gateway defaults
+# a brand-new function to verify_jwt=true, which rejects every request
+# (including this function's own unauthenticated GET health check) before the
+# function's own code ever runs. Keep the setting in source so deployments
+# consistently reach the function's own authorization checks.
+[verify_jwt]
+enabled = false

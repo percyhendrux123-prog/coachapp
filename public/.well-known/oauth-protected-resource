@@ -1,0 +1,6 @@
+{
+  "resource": "https://app.example.com/mcp",
+  "authorization_servers": ["https://app.example.com"],
+  "bearer_methods_supported": ["header"],
+  "scopes_supported": ["mcp", "offline_access"]
+}

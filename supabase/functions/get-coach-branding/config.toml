@@ -1,0 +1,5 @@
+# Genuinely no auth at all here — this is the one public endpoint in the backend.
+# Without this, Supabase's gateway defaults a new function to verify_jwt=true,
+# which would reject every anonymous request before the function's own code runs.
+[verify_jwt]
+enabled = false

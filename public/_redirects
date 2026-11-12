@@ -1,0 +1,11 @@
+# MCP connector OAuth surface + endpoint (must win over the SPA catch-all).
+# The function routes on ?fnpath; original query params (authorize) are preserved.
+/oauth/*   /.netlify/functions/mcp-oauth?fnpath=/oauth/:splat   200
+/mcp       /.netlify/functions/mcp-oauth?fnpath=/mcp            200
+
+# Static files the SPA rewrite must not swallow.
+/sw.js                  /sw.js                  200
+/manifest.webmanifest   /manifest.webmanifest   200
+
+# SPA catch-all (unchanged).
+/*  /index.html  200

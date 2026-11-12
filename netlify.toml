@@ -1,0 +1,29 @@
+# Added for the MCP connector OAuth surface (branch: mcp-oauth-connector).
+# The site was previously a plain static SPA deploy; this adds a functions dir
+# and serves the OAuth discovery metadata at the origin root.
+[build]
+  command = "npm run build"
+  publish = "dist"
+  functions = "netlify/functions"
+
+# OAuth discovery documents are extensionless — force application/json.
+[[headers]]
+  for = "/.well-known/oauth-protected-resource"
+  [headers.values]
+    Content-Type = "application/json"
+
+[[headers]]
+  for = "/.well-known/oauth-authorization-server"
+  [headers.values]
+    Content-Type = "application/json"
+
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache"
+    Service-Worker-Allowed = "/"
+
+[[headers]]
+  for = "/manifest.webmanifest"
+  [headers.values]
+    Content-Type = "application/manifest+json"

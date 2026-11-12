@@ -1,0 +1,212 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.font-display, .display, .kicker, .section-title { font-stretch: 125%; }
+
+:root {
+  /* The app is a light-only design (bg-paper / text-ink). Without this, "light dark"
+     let mobile dark mode paint native form controls with a dark background while the
+     text kept inheriting near-black text-ink → unreadable black-on-black inputs. */
+  color-scheme: light;
+}
+body {
+  @apply bg-paper text-ink antialiased;
+  font-family: "Archivo Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  /* Quiet atmosphere: two ink-tinted radial washes over paper. Built from the same
+     CSS variables the tenant themes drive, so a themed tenant's ambience shifts with
+     its palette instead of fighting it. */
+  background-image:
+    radial-gradient(1100px 520px at 85% -5%, color-mix(in srgb, rgb(var(--ink-rgb, 10 10 10)) 5%, transparent), transparent 62%),
+    radial-gradient(900px 480px at -10% 40%, color-mix(in srgb, rgb(var(--ink-rgb, 10 10 10)) 3%, transparent), transparent 58%);
+  background-repeat: no-repeat;
+}
+
+/* Keyboard focus — brand ring, never rely on browser default alone. */
+:focus-visible {
+  outline: 2px solid rgb(var(--ink-rgb, 10 10 10));
+  outline-offset: 2px;
+}
+:root[data-theme="dark"] :focus-visible {
+  outline-color: rgb(var(--ink-rgb, 242 242 242));
+}
+
+@layer components {
+  /* The one signature move: display headings set wide, heavy, uppercase, tight.
+     Everything else in the app stays quiet so these carry the brand. */
+  .display {
+    @apply font-display uppercase;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 0.92;
+  }
+  /* Overline label above a display heading — small, wide-tracked, dimmed.
+     60% is the dimming floor for readable text: at 45% an 11px label blended to
+     ~3.3:1 on light paper, under the 4.5:1 AA minimum (worse on cool_slate). */
+  .kicker {
+    @apply font-display block text-[11px] uppercase opacity-60;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+  }
+  /* Section headers inside cards/panels — the mid-tier of the hierarchy. */
+  .section-title {
+    @apply font-display text-xs uppercase tracking-[0.14em] opacity-60;
+    font-weight: 700;
+  }
+  /* Standard glass card for app surfaces (bento tiles, list containers, forms). */
+  .glass {
+    @apply rounded-2xl border border-ink/10 bg-white/55 backdrop-blur-md;
+    box-shadow: 0 1px 2px rgba(10, 10, 10, 0.04), 0 8px 24px -12px rgba(10, 10, 10, 0.08);
+  }
+  /* Primary action button — brand fill, confident weight, gentle press feedback.
+     Text color is picked for contrast against --brand-color (colorContrast.js) rather
+     than assumed to be white: a coach's chosen accent can land anywhere on the
+     lightness scale, and white-on-light-gold was reading at ~2.3:1 (WCAG needs 4.5:1). */
+  .btn-primary {
+    @apply inline-flex min-h-[44px] items-center justify-center rounded-xl bg-brand px-4 py-2 text-sm font-semibold transition
+      hover:opacity-90 active:scale-[0.98] disabled:opacity-50;
+    color: var(--brand-text, rgb(var(--paper-rgb, 250 250 250)));
+  }
+  /* Diagonal hatch marking a value the app cannot currently see because a data source is
+     faulty. Built from --ink-rgb so it inverts with the theme toggle like everything else;
+     the coach home is the only consumer today. Paired with a dashed border at the call
+     site — hatch alone means "broken", dashed alone means "not measured". */
+  .hatch {
+    background-image: repeating-linear-gradient(
+      135deg,
+      transparent 0 6px,
+      rgb(var(--ink-rgb, 10 10 10) / 0.05) 6px 12px
+    );
+  }
+  /* Hide the scrollbar on horizontally scrolling pill bars (still scrollable). */
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .btn-ghost {
+    @apply inline-flex min-h-[44px] items-center justify-center rounded-xl border border-ink/15 bg-white/60 px-4 py-2 text-sm font-semibold
+      transition hover:bg-ink/[0.04] active:scale-[0.98] disabled:opacity-50;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Belt-and-suspenders: form fields never set their own bg/text color inline, so pin them
+   explicitly here. Guarantees readable contrast regardless of device/UA color scheme.
+   (The dark-mode block below flips these together with color-scheme — always in lockstep.) */
+input,
+textarea,
+select {
+  background-color: #ffffff;
+  color: #0a0a0a; /* ink */
+}
+input::placeholder,
+textarea::placeholder {
+  color: rgba(10, 10, 10, 0.4);
+}
+
+/* text-brand-fg resolves to whichever of --brand-fg-light/-dark App.jsx computed for the
+   current tenant (colorContrast.js), so accent-colored text stays legible without going
+   flat to plain ink. Both light and dark variants are inline vars set once at brand-load
+   time (see App.jsx / CoachSettings.jsx); this is what actually selects between them per
+   theme, the same split pattern as --danger-rgb/--success-rgb just below. */
+:root {
+  --brand-fg: var(--brand-fg-light, var(--brand-color, rgb(var(--ink-rgb, 10 10 10))));
+}
+:root[data-theme="dark"] {
+  --brand-fg: var(--brand-fg-dark, var(--brand-color, rgb(var(--ink-rgb, 242 242 242))));
+}
+
+/* Dark mode — activated ONLY by the in-app toggle setting data-theme="dark" on <html>
+   (src/lib/theme.js). Never keyed off the OS: `color-scheme: light dark` is what broke
+   form-control contrast in a2eb674. color-scheme and the input colors flip TOGETHER
+   here, mirroring the light pins above. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --danger-rgb: 248 113 113; /* red-400 — red-600 lacks contrast on dark paper */
+  --success-rgb: 74 222 128; /* green-400 */
+}
+:root[data-theme="dark"] .glass {
+  border-color: rgb(255 255 255 / 0.09);
+  background-color: rgb(255 255 255 / 0.06);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 8px 24px -12px rgba(0, 0, 0, 0.6);
+}
+:root[data-theme="dark"] .btn-ghost {
+  border-color: rgb(255 255 255 / 0.15);
+  background-color: rgb(255 255 255 / 0.07);
+}
+:root[data-theme="dark"] input,
+:root[data-theme="dark"] textarea,
+:root[data-theme="dark"] select {
+  background-color: #171717;
+  color: #f2f2f2;
+}
+:root[data-theme="dark"] input::placeholder,
+:root[data-theme="dark"] textarea::placeholder {
+  color: rgba(242, 242, 242, 0.4);
+}
+
+/* Coach mobile bottom nav (CoachTabs) — keep page content above the fixed bar */
+@media (max-width: 767px) {
+  main:has([data-coach-mobile-nav]) {
+    padding-bottom: calc(var(--coach-mobile-nav-height, 5.5rem) + 1rem);
+  }
+}
+
+/* ── Optional shell looks (tenant_config.theme_key → data-look) ───────────── */
+
+/* Architecture grid: blueprint-style paper */
+:root[data-look="architecture_grid"] body {
+  background-image:
+    linear-gradient(to right, rgb(var(--ink-rgb, 30 41 59) / 0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(var(--ink-rgb, 30 41 59) / 0.06) 1px, transparent 1px),
+    radial-gradient(900px 480px at 90% -5%, rgb(var(--ink-rgb, 30 41 59) / 0.04), transparent 60%);
+  background-size: 24px 24px, 24px 24px, auto;
+  background-attachment: fixed;
+}
+:root[data-look="architecture_grid"] .glass {
+  border-radius: 0.5rem;
+  border-color: rgb(var(--ink-rgb, 30 41 59) / 0.14);
+  box-shadow: none;
+}
+:root[data-look="architecture_grid"] .display {
+  letter-spacing: 0.04em;
+}
+
+/* Terminal: dark console; status color has meaning (brand/success/danger), not rainbow text */
+:root[data-look="terminal"] body {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  background-image:
+    radial-gradient(ellipse 120% 80% at 50% -20%, rgb(34 197 94 / 0.08), transparent 55%);
+}
+:root[data-look="terminal"] .display {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  letter-spacing: 0.06em;
+}
+:root[data-look="terminal"] .kicker,
+:root[data-look="terminal"] .section-title {
+  letter-spacing: 0.18em;
+  opacity: 0.7;
+}
+:root[data-look="terminal"] .glass {
+  border-radius: 0.25rem;
+  border-color: rgb(var(--ink-rgb, 187 247 208) / 0.18);
+  background-color: rgb(0 0 0 / 0.35);
+  backdrop-filter: blur(8px);
+}
+:root[data-look="terminal"][data-theme="dark"] .glass {
+  background-color: rgb(0 0 0 / 0.45);
+}
+:root[data-look="terminal"] .btn-primary {
+  border-radius: 0.25rem;
+  box-shadow: 0 0 0 1px rgb(34 197 94 / 0.35);
+}
