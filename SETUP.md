@@ -15,7 +15,8 @@ You will use three free services:
 - **Netlify** is the web host: it puts the app on a web address people can open.
 
 All three have free plans that are enough to start. None of the steps below asks for a card. If a
-screen asks you to pick a plan, pick the free one.
+screen asks you to pick a plan, pick the free one. [COSTS.md](COSTS.md) lists what the free plans
+include and where they stop (for example, Supabase's free plan keeps no automatic backups).
 
 **Payments are optional.** The app works without Stripe (a payment service). You only need it if
 you want clients to pay inside the app. See "Optional extras" at the end.
@@ -264,9 +265,12 @@ from their Home Screen.
     them no coach or client data.
 
 You are done. Next, open **Settings** (under **More**) to set your app name, logo and brand color.
-To add a client: **Clients > Add client**, fill in their name and email, **Create client**, then
-**Copy invite link** and send the link to them yourself (text or email). They open it, enter their
-email, and sign in with the code they receive.
+
+Then follow [FIRST-HOUR.md](FIRST-HOUR.md) for your first client: **Clients > Add client**, send
+them the health screen, assign a program, decide on nutrition, then **Release** and send the
+invite link. The app shows the client nothing until you release them, and it will not release a
+client without a health screen on file. [starter-content/](starter-content/README.md) has three
+sample programs you can load to start with (sample content, edit before use).
 
 ---
 
