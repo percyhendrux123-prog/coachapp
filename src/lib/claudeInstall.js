@@ -1,7 +1,7 @@
 // One-tap "Connect to Claude" link. Anthropic documents a prefill URL for connectors that
 // are not in their directory: it opens claude.ai's "Add custom connector" dialog with the
 // name and server URL already filled in; the person reviews and presses Continue, then our
-// own sign-in page takes over (email → 6-digit code → pick read / full). Works on Free, Pro
+// own sign-in page takes over (email → code → pick read / full). Works on Free, Pro
 // and Max. Source (verified 2026-09-04):
 // https://claude.com/docs/connectors/building/directory-vs-custom#custom-connectors
 //

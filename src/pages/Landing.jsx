@@ -57,7 +57,7 @@ export default function Landing() {
           Sign in
         </Link>
         <p className="text-center text-xs opacity-50">
-          Email a six-digit code to the address on file (coach or client).
+          Email a one-time code to the address on file (coach or client).
         </p>
       </div>
 

@@ -804,7 +804,7 @@ function AIOptIn({ ctx, userId, mode, appName }) {
       </summary>
       <p className="mt-2 max-w-lg text-xs opacity-70">{copyFor(mode, "ai_optin_body")}</p>
       {/* Primary path (2026-09-03): no token to copy. Claude opens our sign-in page; the buyer
-          enters their email, the 6-digit code, and picks read / full there. */}
+          enters their email, the emailed code, and picks read / full there. */}
       {installUrl && (
         <a href={installUrl} target="_blank" rel="noreferrer" className="btn-primary mt-3 inline-block px-3 py-1.5 text-xs">
           Connect to Claude

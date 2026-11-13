@@ -105,7 +105,7 @@ export default function Login() {
         {sent ? (
           <form onSubmit={confirm} className="mt-6 space-y-3">
             <p className="text-sm opacity-70">
-              Enter the 6-digit code for <strong>{email.trim()}</strong> — from your email, or the one your coach gave you. Keep this coaching app window open.
+              Enter the code for <strong>{email.trim()}</strong> — from your email, or the one your coach gave you. Keep this coaching app window open.
             </p>
             {hint && <p className="text-xs leading-relaxed opacity-60">{hint}</p>}
             <label className="block text-sm">
@@ -117,10 +117,10 @@ export default function Login() {
                 inputMode="numeric"
                 autoComplete="one-time-code"
                 required
-                maxLength={8}
+                maxLength={12}
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
-                placeholder="123456"
+                placeholder="12345678"
                 className="w-full rounded-xl border border-ink/15 px-3 py-2.5 text-center text-xl tracking-[0.3em]"
               />
             </label>

@@ -84,11 +84,11 @@ export default function ClaimCoach() {
       <p className="text-sm opacity-70">You've been invited to run your own coaching app. Sign in with your email to claim it.</p>
       {sent ? (
         <form onSubmit={confirm} className="mt-6 space-y-3">
-          <p className="text-sm opacity-70">Enter the 6-digit code from your email here.</p>
+          <p className="text-sm opacity-70">Enter the code from your email here.</p>
           <label className="block text-sm">
             <span className="mb-1 block opacity-60">Email code</span>
-            <input type="text" inputMode="numeric" autoComplete="one-time-code" required maxLength={8}
-              value={code} onChange={(e) => setCode(e.target.value)} placeholder="123456"
+            <input type="text" inputMode="numeric" autoComplete="one-time-code" required maxLength={12}
+              value={code} onChange={(e) => setCode(e.target.value)} placeholder="12345678"
               className="w-full rounded-xl border border-ink/15 px-3 py-2.5 text-center text-xl tracking-[0.3em]" />
           </label>
           <button className="btn-primary w-full py-2.5">Claim my app</button>

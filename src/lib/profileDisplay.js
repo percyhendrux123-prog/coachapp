@@ -26,10 +26,13 @@ export function formatHeight({ imperial, height_in, height_cm }) {
   return cm != null ? `${Math.round(cm)} cm` : null;
 }
 
+// Pounds to the whole pound (the stored kilograms carry conversion noise: 132 lb reads
+// back as 132.06), kilograms to one decimal.
 export function formatWeight({ imperial, lb, kg }) {
-  if (imperial && finite(lb) != null) return `${roundForDisplay(lb)} lb`;
+  if (imperial && finite(lb) != null) return `${Math.round(finite(lb))} lb`;
   return finite(kg) != null ? `${roundForDisplay(kg)} kg` : null;
 }
 
-// Labels whose value must keep its case (an email address is not a title).
-export const KEEP_CASE = new Set(["Email", "Name", "Coach"]);
+// Labels whose value must keep its case (an email address is not a title; "5 ft 4 in"
+// must not become "5 Ft 4 In").
+export const KEEP_CASE = new Set(["Email", "Name", "Coach", "Height", "Weight", "Goal weight"]);

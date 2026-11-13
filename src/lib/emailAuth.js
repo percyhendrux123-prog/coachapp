@@ -1,4 +1,6 @@
-// Email sign-in with a 6-digit code.
+// Email sign-in with a one-time code. Supabase sends 6 digits on older projects and 8 on
+// projects created since late 2026 (Authentication > Email > "Email OTP Length", 6-10), so
+// the app accepts any length in that range.
 //
 // Sign-ups can be open or closed in Supabase (Authentication > Sign In / Providers >
 // "Allow new users to sign up"). Both must work for an invited client:
@@ -19,6 +21,9 @@
 // The caller cannot tell those two cases apart (and should not: that would reveal
 // which addresses are invited), so the result carries via: "confirmation" and the
 // screen says "if your coach invited this email".
+
+export const CODE_MIN_DIGITS = 6;
+export const CODE_MAX_DIGITS = 10;
 
 function normalizedEmail(email) {
   return String(email || "").trim().toLowerCase();
@@ -55,8 +60,8 @@ export async function requestEmailCode(auth, email, redirectTo) {
 
 export async function verifyEmailCode(auth, email, token) {
   const code = normalizedCode(token);
-  if (code.length !== 6) {
-    throw new Error("Enter the 6-digit code from your email.");
+  if (code.length < CODE_MIN_DIGITS || code.length > CODE_MAX_DIGITS) {
+    throw new Error("Enter the whole code from your email (6 to 10 digits).");
   }
 
   return auth.verifyOtp({

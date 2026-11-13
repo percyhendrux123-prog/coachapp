@@ -46,7 +46,8 @@ test("verifyEmailCode rejects an incomplete code before calling Supabase", async
     },
   };
 
-  await assert.rejects(() => verifyEmailCode(auth, "user@example.com", "123"), /6-digit code/);
+  await assert.rejects(() => verifyEmailCode(auth, "user@example.com", "123"), /whole code/);
+  await assert.rejects(() => verifyEmailCode(auth, "user@example.com", "12345678901"), /whole code/);
   assert.equal(called, false);
 });
 
@@ -122,4 +123,16 @@ test("friendlyAuthError explains the default-mailer refusal and the rate limit",
   assert.match(friendlyAuthError({ code: "email_address_not_authorized", message: "Email address not authorized" }), /sign-in code/);
   assert.match(friendlyAuthError({ status: 429 }), /email limit/);
   assert.equal(friendlyAuthError({ message: "Token has expired or is invalid" }), "Token has expired or is invalid");
+});
+
+// New hosted projects default to 8-digit email codes (measured: mailer_otp_length = 8 on a
+// project created 2026-11-12). The app used to refuse anything but 6 digits, so nobody on a
+// new project could sign in.
+test("verifyEmailCode accepts the 8-digit codes new Supabase projects send", async () => {
+  let payload;
+  const auth = { verifyOtp: async (v) => { payload = v; return { error: null }; } };
+  await verifyEmailCode(auth, "user@example.com", "1234 5678");
+  assert.equal(payload.token, "12345678");
+  await verifyEmailCode(auth, "user@example.com", "1234567890");
+  assert.equal(payload.token, "1234567890");
 });

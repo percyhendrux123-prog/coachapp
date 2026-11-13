@@ -135,8 +135,9 @@ it along the way. Keep it private: two of them work like passwords.
 
 ## Part 5. Connect sign-in to your site
 
-Sign-in works by email: the app emails a 6-digit code. Supabase needs to know your site address
-so the emails point to the right place, and its emails need one line added so they show the code.
+Sign-in works by email: the app emails a one-time code (6 or 8 digits, depending on your
+project). Supabase needs to know your site address so the emails point to the right place, and
+its emails need one line added so they show the code.
 
 20. In Supabase, click **Authentication** in the left sidebar, then **URL Configuration**.
     Replace **Site URL** with your site address and click **Save**.
@@ -155,10 +156,16 @@ so the emails point to the right place, and its emails need one line added so th
 23. Open the **Confirm signup** template and add the same line, then click **Save**. New clients
     get this email the first time they sign in, so it needs the code too.
 
+    Supabase can take a few minutes to start using the changed text. If the first email in step 24
+    has a link but no code, wait five minutes and send a new code.
+
 ## Part 6. Make yourself the coach
 
 24. Open your site address. You should see the sign-in page. Enter your own email and click
-    **Send sign-in code**. Enter the 6-digit code from the email and click **Open my account**.
+    **Send sign-in code**. Enter the code from the email and click **Open my account**.
+
+    Use the same email address as your Supabase account. Until you do step 27, Supabase's built-in
+    email sender only emails the people on your Supabase team, and only about two emails an hour.
 
     You should see: "You're signed in, but this email isn't linked as a coach or client yet."
     That is expected. The next step links you.
@@ -183,15 +190,39 @@ so the emails point to the right place, and its emails need one line added so th
 26. Go back to your site and reload the page. You should see the coach console. It opens on the
     **Brief** tab, with **Home**, **Clients**, **Inbox** and **More** along the bottom.
 
+## Part 7. Before you invite clients
+
+27. **Connect an email sender.** Supabase's built-in sender is for testing: it only emails
+    addresses on your Supabase team, about two emails an hour. Your clients' sign-in codes need
+    your own sender. Any email service that offers "SMTP" works; several have free plans (for
+    example Brevo, Resend with your own domain, or a Gmail account with an app password). Check
+    the service's current free plan before you sign up; none of this needs a card.
+
+    From that service, copy its SMTP **host**, **port**, **username** and **password**, and the
+    sender address it lets you send from. In Supabase, open **Authentication > Emails > SMTP
+    Settings**, turn on **Enable Custom SMTP**, paste those values, set **Sender name** to your
+    business name, and click **Save**. Then send yourself a code from the sign-in page to check
+    it arrives.
+
+    No email sender yet? You can still bring a client in: open the client, click **Read sign-in
+    code**, and read them the code on the phone. They enter their email on the sign-in page, tap
+    **I already have a code**, and type it.
+
+28. **Close sign-ups (recommended).** In Supabase, open **Authentication > Sign In / Providers**
+    and turn off **Allow new users to sign up**, then **Save**. Your invited clients still get in:
+    adding a client creates their sign-in, and the app asks Supabase to send them a "Confirm
+    signup" email with the code (the template from step 23). Someone without an invite gets no
+    code and no account.
+
+    Leave sign-ups on only if you run the public 7-day challenge page or sell coach licenses from
+    the app, because those let new people sign themselves up. With sign-ups on, a stranger can
+    create an empty sign-in, but they only see the "isn't linked" message: the database shows
+    them no coach or client data.
+
 You are done. Next, open **Settings** (under **More**) to set your app name, logo and brand color.
 To add a client: **Clients > Add client**, fill in their name and email, **Create client**, then
 **Copy invite link** and send the link to them yourself (text or email). They open it, enter their
 email, and sign in with the code they receive.
-
-**About sign-ups.** Leave "Allow new users to sign up" turned on in Supabase (Authentication).
-Your invited clients need it the first time they sign in. Someone who finds your site without an
-invite can create a sign-in, but they only see the "isn't linked" message: the database shows
-them no coach or client data.
 
 ---
 
@@ -204,10 +235,9 @@ You can add these any time. Each one is separate.
   `VITE_VAPID_PUBLIC_KEY` in Netlify and `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` and
   `VAPID_SUBJECT` in Supabase (**Edge Functions > Secrets**). The full list of settings is in
   `.env.example`.
-- **More sign-in emails.** Supabase's built-in email sender only sends a few emails per hour,
-  which is enough to set up and to invite a client now and then. If sign-in codes stop arriving
-  when you invite several clients in a day, connect your own email service in Supabase under
-  **Authentication > Emails > SMTP Settings**.
+- **AI read of each check-in** (a short summary for you when a client checks in). Set
+  `ANTHROPIC_API_KEY` in Supabase **Edge Functions > Secrets**. Without it check-ins work
+  exactly the same; there is just no AI read.
 - **Email from your own address** (onboarding reminders, digests). Needs a free Resend account:
   set `RESEND_API_KEY` and `EMAIL_FROM` in Supabase **Edge Functions > Secrets**.
 - **Reminders and scheduled jobs.** In Supabase **Edge Functions > Secrets**, add `CRON_SECRET`

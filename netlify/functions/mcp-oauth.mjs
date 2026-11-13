@@ -143,7 +143,7 @@ async function tokenIsValid(rawToken) {
 
 // --- endpoints ---------------------------------------------------------------
 // --- Connect-your-AI sign-in (2026-09-03) -------------------------------------
-// The authorize page IS the connect screen: email → 6-digit code (Supabase Auth's own
+// The authorize page IS the connect screen: email → one-time code (Supabase Auth's own
 // OTP, the same one the app uses) → pick read / full → a connector token is minted
 // server-side and handed to the AI app as the OAuth access token. The buyer never sees
 // a token string. Pasting a connector code still works (coaches, and anyone who prefers
@@ -153,7 +153,7 @@ const OAUTH_FIELDS = ["client_id", "redirect_uri", "state", "code_challenge",
   "code_challenge_method", "response_type", "scope"];
 
 export function normalizeEmail(v) { return String(v || "").trim().toLowerCase(); }
-export function otpCodeFrom(v) { return String(v || "").replace(/\D/g, "").slice(0, 6); }
+export function otpCodeFrom(v) { return String(v || "").replace(/\D/g, "").slice(0, 10); }
 export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // What the two cards say, per tenant mode. The self-serve plan has no coach, so its
@@ -201,7 +201,7 @@ ${errorMsg ? `<p class="err">${escapeHtml(errorMsg)}</p>` : ""}
 // Step 1 — email.
 function emailForm(q, errorMsg = "", pasteError = "") {
   return page("Connect your AI", `<h1>Connect your AI</h1>
-<p class="muted">Enter the email you use for the app. We send a 6-digit code. No password, no token to copy.</p>
+<p class="muted">Enter the email you use for the app. We email you a code. No password, no token to copy.</p>
 ${errorMsg ? `<p class="err">${escapeHtml(errorMsg)}</p>` : ""}
 <form method="POST" action="/oauth/authorize">${hiddenFields(q)}<input type="hidden" name="step" value="send">
 <input name="email" type="email" inputmode="email" autocomplete="email" autofocus placeholder="you@example.com" value="${escapeHtml(q.get("email") || "")}">
@@ -218,7 +218,7 @@ function codeForm(q, email, accounts, errorMsg = "") {
 <p class="muted">Code sent to <b>${escapeHtml(email)}</b>. Enter it below, choose what your AI may do, and you are connected.</p>
 ${errorMsg ? `<p class="err">${escapeHtml(errorMsg)}</p>` : ""}
 <form method="POST" action="/oauth/authorize">${hiddenFields(q)}<input type="hidden" name="step" value="verify"><input type="hidden" name="email" value="${escapeHtml(email)}">
-<input name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]*" maxlength="6" autofocus placeholder="6-digit code">
+<input name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]*" maxlength="10" autofocus placeholder="Code from your email">
 ${cards}
 <button>Connect</button></form>
 <form method="POST" action="/oauth/authorize" style="margin-top:8px">${hiddenFields(q)}<input type="hidden" name="step" value="send"><input type="hidden" name="email" value="${escapeHtml(email)}"><button class="secondary">Send a new code</button></form>`);
@@ -348,7 +348,7 @@ export default async (req) => {
       const accounts = (await accountsForEmail(email)).filter((a) => a.user_id);
       if (accounts.length === 0) return emailForm(form, "No client account uses that email.");
       const code = otpCodeFrom(form.get("code"));
-      if (code.length !== 6) return codeForm(form, email, accounts, "Enter the 6-digit code from your email.");
+      if (code.length < 6 || code.length > 10) return codeForm(form, email, accounts, "Enter the whole code from your email (6 to 10 digits).");
       const [chosenClient, scope] = String(form.get("choice") || "").split(":");
       const account = accounts.find((a) => a.client_id === chosenClient);
       if (!account || !scopeAllowed(account.mode, scope)) return codeForm(form, email, accounts, "Choose what your AI may do.");

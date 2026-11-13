@@ -25,6 +25,8 @@ test("email and code normalisation match the app's sign-in", () => {
   assert.ok(EMAIL_RE.test("sam@example.com"));
   assert.ok(!EMAIL_RE.test("not an email"));
   assert.equal(otpCodeFrom("46 41 99"), "464199");
-  assert.equal(otpCodeFrom("4641999"), "464199", "extra digits are cut, not accepted");
+  // New Supabase projects send 8-digit codes; the connector screen must take them whole.
+  assert.equal(otpCodeFrom("4641 9921"), "46419921");
+  assert.equal(otpCodeFrom("12345678901234"), "1234567890", "more than 10 digits are cut, not accepted");
   assert.equal(otpCodeFrom("abc"), "");
 });

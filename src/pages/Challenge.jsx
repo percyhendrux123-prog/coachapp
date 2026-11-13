@@ -157,7 +157,7 @@ function SignInToStart({ requestEmailCode, verifyEmailCode }) {
   if (sent) {
     return (
       <form onSubmit={confirm} className="space-y-3">
-        <p className="text-sm opacity-70">Enter the 6-digit code from your email here. Keep this app open.</p>
+        <p className="text-sm opacity-70">Enter the code from your email here. Keep this app open.</p>
         <label className="block text-sm font-medium">
           Email code
           <input
@@ -165,11 +165,11 @@ function SignInToStart({ requestEmailCode, verifyEmailCode }) {
             inputMode="numeric"
             autoComplete="one-time-code"
             required
-            maxLength={8}
+            maxLength={12}
             id="challenge-code"
             value={code}
             onChange={(e) => setCode(e.target.value)}
-            placeholder="123456"
+            placeholder="12345678"
             className="mt-1 min-h-[44px] w-full rounded-xl border border-ink/15 px-3 py-2.5 text-center text-xl tracking-[0.3em]"
           />
         </label>

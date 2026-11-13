@@ -28,7 +28,7 @@ export function accountInviteEmail({ displayName, link }) {
       `${greeting(displayName)}` +
       `Your account is ready. Open this link to set it up:\n\n` +
       `${link}\n\n` +
-      `Enter this same email address. You will get a 6-digit code. ` +
+      `Enter this same email address. You will get a sign-in code by email. ` +
       `Type the code in the app. Do not use a link from the email if one is there. ` +
       `There is no password to remember.\n\n` +
       `The link is good for 14 days. If it expires before you get to it, tell me and I will send a new one.\n\n` +
