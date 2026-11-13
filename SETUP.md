@@ -95,13 +95,19 @@ it along the way. Keep it private: two of them work like passwords.
     "API URL" ending in `/rest/v1/`. That one is not the right value here.)
 
 13. Click **Project Settings** (the gear at the bottom of the left sidebar), then **API Keys**.
-    The app uses the older style of key: click **View legacy API keys** (on some screens it is a
-    tab called **Legacy API Keys**). Copy the key labelled **anon** **public** into your note
-    under "Anon key". It is a long text starting with `eyJ`. This key is meant to be public: it
-    only lets the app talk to the database under the rules the database enforces.
+    Copy the **Publishable key**, starting with `sb_publishable_`, into your note under
+    "Public key". This key is meant to be public: it only lets the app talk to the database under
+    the rules the database enforces. Keep the Netlify setting name `VITE_SUPABASE_ANON_KEY` in
+    step 17 even though you are pasting a publishable key.
 
-    Do not copy the **service_role** key here. That one is secret. Keys starting with
-    `sb_publishable_` or `sb_secret_` are the newer style and are not the one to copy.
+    An existing **anon public** key starting with `eyJ` also works while Supabase supports it;
+    you do not need to find or create a legacy key for a new setup. Never copy a **Secret** key
+    starting with `sb_secret_` or a **service_role** key into this box.
+
+    If a public form or the AI connector later reports **Invalid JWT** or **401**, see
+    [API-key compatibility in README.md](README.md#api-key-compatibility). Passing the build
+    check does not test Supabase's function gateway, and changing this public key does not
+    migrate the app's server-side keys.
 
 14. Open **supabase.com/dashboard/account/tokens** (your account's Access Tokens page). Click
     **Generate new token** and fill in the form:
@@ -139,7 +145,7 @@ it along the way. Keep it private: two of them work like passwords.
     repository name or type your own (it must not match a repository you already have). Paste from
     your note into the three boxes, which are labelled with what they want:
     - **Supabase Project URL** (VITE_SUPABASE_URL): your Supabase URL.
-    - **Supabase anon public key** (VITE_SUPABASE_ANON_KEY): your anon key.
+    - **Supabase publishable public key** (VITE_SUPABASE_ANON_KEY): your public key.
     - **Supabase access token** (SUPABASE_ACCESS_TOKEN): your access token.
 
     Paste only the value, with no spaces before or after.
