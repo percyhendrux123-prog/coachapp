@@ -24,7 +24,9 @@ Coach console
 - Meal plan assembly from a meal library with allergen and dietary gates that refuse rather than guess
 - Check-in review, with an optional AI-proposed read that never becomes authoritative on its own
 - Challenges: public 7-day challenges with daily standards and a sign-up page
-- Settings: brand color, logo, app name, check-in cadence, onboarding reminders
+- Settings: brand color, logo, app name, client-app switches, onboarding reminders. Check-ins are
+  weekly by default; there is no screen to change the rhythm or questions yet (the AI connector can
+  set one client's rhythm)
 - Connect your own AI: an MCP server (about 90 tools, read and read/write scopes, audit logged) with
   OAuth so assistants such as Claude can work with your coaching data. The app hosts no model of its own.
 
@@ -37,12 +39,16 @@ Platform
 
 ## What is not included
 
-- No content. There is no meal library, no exercise video library, no programs, no educational
-  articles. The Content and Knowledge pages are placeholders for your own material.
+- No content beyond a small sample pack. [starter-content/](starter-content/README.md) has three
+  sample programs and one sample meal plan, written for this repository (sample content, edit
+  before use). There is no meal library, no exercise video library, no educational articles. The
+  Content and Knowledge pages are placeholders for your own material.
 - No hosted service, no accounts, no data. You bring your own Supabase, Netlify and Stripe accounts.
 - No AI model or API key. The optional check-in read generator calls the Anthropic API with your key.
 - No legal review. The waiver and health screen text in `src/content/` is a starting point, not
   legal advice. Have it reviewed for your jurisdiction before you use it with clients.
+- No support. Nobody runs a help desk for your copy or watches it for you. Issues welcome: report
+  bugs and unclear steps as [GitHub issues](https://github.com/percyhendrux123-prog/coachapp/issues).
 
 ## Get your own copy (no code)
 
@@ -51,6 +57,13 @@ Platform
 Three steps: open this page, click the button, follow [SETUP.md](SETUP.md). SETUP.md is written for
 someone who has never deployed anything: free Supabase and Netlify accounts, one database file
 pasted into the Supabase SQL editor, three values pasted into the button's form. No terminal.
+
+| Guide | What it covers |
+| --- | --- |
+| [SETUP.md](SETUP.md) | Putting your own copy online, about 45 minutes |
+| [FIRST-HOUR.md](FIRST-HOUR.md) | Your first client, from Add client to their first check-in, with screenshots |
+| [starter-content/](starter-content/README.md) | Three sample programs and a sample meal plan to load (sample content, edit before use) |
+| [COSTS.md](COSTS.md) | What the free Netlify and Supabase plans include, where they stop, and Stripe's fees (read 2026-11-12) |
 
 The button asks for:
 
@@ -184,7 +197,8 @@ branch database, not one with real clients in it.
 
 ## Contributing
 
-Changes are welcome. Open an issue first for anything larger than a small fix, keep each pull
+Issues welcome, including "I got stuck at step N" reports. Changes are welcome too. Open an issue
+first for anything larger than a small fix, keep each pull
 request to one change with tests, and never commit real client data or secrets. The full guide is in
 [CONTRIBUTING.md](CONTRIBUTING.md). Security problems: see [SECURITY.md](SECURITY.md).
 
