@@ -32,5 +32,5 @@
 # Full walkthrough: SETUP.md.
 [template.environment]
   VITE_SUPABASE_URL = "Supabase Project URL, e.g. https://abcdefghijklmnopqrst.supabase.co (Supabase: Project Overview, Copy next to the address)"
-  VITE_SUPABASE_ANON_KEY = "Supabase anon public key, starts with eyJ (Supabase: Project Settings > API Keys > View legacy API keys)"
+  VITE_SUPABASE_ANON_KEY = "Supabase publishable public key, starts with sb_publishable_ (Project Settings > API Keys; a legacy anon public eyJ key also works; never a Secret or service_role key)"
   SUPABASE_ACCESS_TOKEN = "Supabase access token, starts with sbp_, lets the deploy install the server functions (supabase.com/dashboard/account/tokens: Expires Never, your project, Full access)"
