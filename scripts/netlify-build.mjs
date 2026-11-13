@@ -39,11 +39,12 @@ export function checkSettings(env) {
     problems.push(`VITE_SUPABASE_URL does not look like a Supabase Project URL. Expected https://<20 letters>.supabase.co with nothing after it, got "${url.slice(0, 80)}".`);
   }
   if (!key) {
-    problems.push("VITE_SUPABASE_ANON_KEY is empty. Paste the anon public key from Supabase (Project Settings > API Keys).");
+    problems.push("VITE_SUPABASE_ANON_KEY is empty. Paste the publishable public key from Supabase (Project Settings > API Keys).");
   } else if (key.startsWith("sb_secret_") || /service_role/.test(decodeJwtRole(key) || "")) {
-    problems.push("VITE_SUPABASE_ANON_KEY holds a SECRET key. Remove it now and paste the anon public key instead. Secret keys must never go in a VITE_ setting.");
-  } else if (!key.startsWith("eyJ")) {
-    problems.push("VITE_SUPABASE_ANON_KEY must be the key labelled anon public (it starts with eyJ). If Supabase shows a key starting with sb_publishable_, click View legacy API keys (or the Legacy API Keys tab) under Project Settings > API Keys and copy the anon key there instead.");
+    problems.push("VITE_SUPABASE_ANON_KEY holds a SECRET key. Remove it now and paste a publishable or legacy anon public key instead. Secret keys must never go in a VITE_ setting.");
+  } else if (!/^sb_publishable_[A-Za-z0-9_-]+$/.test(key)
+      && !(/^eyJ[A-Za-z0-9_-]*\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(key) && decodeJwtRole(key) === "anon")) {
+    problems.push("VITE_SUPABASE_ANON_KEY must be a publishable key (starts with sb_publishable_) or a legacy anon public key (starts with eyJ). Copy the public key from Supabase > Project Settings > API Keys, not a secret key or an access token.");
   }
   return problems;
 }
