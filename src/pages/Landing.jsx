@@ -74,7 +74,7 @@ export default function Landing() {
             Same login. Enter the emailed code and your coach dashboard opens.
           </p>
           <Link to="/license" className="btn-ghost mt-3 inline-flex text-sm">
-            License this platform →
+            Coach on your own terms →
           </Link>
         </div>
       </div>
