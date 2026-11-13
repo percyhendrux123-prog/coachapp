@@ -7,8 +7,8 @@ the free plans include and where you would start to pay.
 **Read from each company's own pricing page on 12 November 2026.** Prices and limits change.
 Before you rely on a number here, open the page linked in each section and check it.
 
-Nothing on this page is an offer from the people who wrote the app. There is no hosted version
-and no paid support.
+This page only describes the three companies' own plans. It is not an offer of hosting or
+support, and you pay those companies directly, not the authors of this app.
 
 ## Netlify (the web host)
 
