@@ -20,9 +20,11 @@ export async function releaseClient(clientId, { noNutrition = false } = {}) {
 }
 
 // P26: record the coach's review of a flagged health screen. The note says what they checked.
-// A refusal arrives as an error whose message starts with "review refused:".
-export async function reviewHealthScreen(intakeId, note) {
-  const { data, error } = await supabase.rpc("review_health_screen", { p_intake_id: intakeId, p_note: note });
+// P28: seenFlags is the flag array the coach was shown; the database refuses (stale) unless the
+// screen's flags are exactly these now. A refusal arrives as an error whose message starts
+// with "review refused:".
+export async function reviewHealthScreen(intakeId, seenFlags, note) {
+  const { data, error } = await supabase.rpc("review_health_screen", { p_intake_id: intakeId, p_seen_flags: seenFlags, p_note: note });
   if (error) throw error;
   return data;
 }

@@ -16482,9 +16482,15 @@ reset row_security;
 -- screen itself, with who, when, which flags, and a note saying what they checked.
 --   * health_screen_reviews: append-only record, one row per review. Readable by the tenant's
 --     coaches; written only through review_health_screen() (no insert/update/delete grant).
---   * review_health_screen(intake, note): coach-only, tenant-checked, refused on a suspended
---     tenant, on an intake that is not the client's latest submitted screen, on a screen with
---     no flags, and on a blank note. Idempotent for the same flags.
+--   * review_health_screen(intake, seen_flags, note): coach-only, tenant-checked, refused on a
+--     suspended tenant, on an intake that is not the client's latest submitted screen, on a
+--     screen with no flags, on a blank note, and when the flags the coach was shown
+--     (seen_flags) are not exactly the screen's flags now (P28: the screen was edited while
+--     the review box was open; the coach must reload and read the new flags). Idempotent for
+--     the same flags.
+--   * the note is trimmed of whitespace of every kind (spaces, tabs, line breaks and the
+--     Unicode spaces JavaScript's trim() removes), then must be 3-1000 characters. The table
+--     enforces the same rule, so a whitespace-only note cannot be stored by any path (P28).
 --   * release_checklist(): a review counts only for the exact intake AND the exact flag set it
 --     reviewed. A new screen, or flags edited later (update_client_onboarding), needs a new
 --     review. The draft-approval path is unchanged and still counts.
@@ -16495,10 +16501,16 @@ create table if not exists public.health_screen_reviews (
   client_id   uuid not null references public.clients(id) on delete cascade,
   intake_id   uuid not null references public.intake_forms(id) on delete cascade,
   flags       jsonb not null check (jsonb_typeof(flags) = 'array' and jsonb_array_length(flags) > 0),
-  note        text not null check (char_length(btrim(note)) between 3 and 1000),
+  note        text not null,
   reviewed_by uuid not null,
   reviewed_at timestamptz not null default now()
 );
+-- P28: the note rule is one named constraint, dropped and re-added so a database that ran the
+-- first P26 draft of this file (space-only btrim) gets the whitespace-class rule too. The note
+-- is stored trimmed by review_health_screen(); the constraint re-checks the trimmed length.
+alter table public.health_screen_reviews drop constraint if exists health_screen_reviews_note_check;
+alter table public.health_screen_reviews add constraint health_screen_reviews_note_check
+  check (char_length(regexp_replace(note, '^[[:space:]\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]+|[[:space:]\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]+$', '', 'g')) between 3 and 1000);
 create index if not exists health_screen_reviews_intake_idx on public.health_screen_reviews (intake_id);
 create index if not exists health_screen_reviews_client_idx on public.health_screen_reviews (client_id);
 comment on table public.health_screen_reviews is
@@ -16514,14 +16526,19 @@ revoke all on table public.health_screen_reviews from public, anon, authenticate
 grant select on table public.health_screen_reviews to authenticated;
 grant all on table public.health_screen_reviews to service_role;
 
-create or replace function public.review_health_screen(p_intake_id uuid, p_note text)
+-- P28: the first P26 draft took (intake, note) only, so a confirmation could clear flags the
+-- coach never saw. Drop that signature so nothing can call around the seen-flags check.
+drop function if exists public.review_health_screen(uuid, text);
+
+create or replace function public.review_health_screen(p_intake_id uuid, p_seen_flags jsonb, p_note text)
 returns jsonb
 language plpgsql security definer
 set search_path = public as $fn$
 declare
   v_intake  public.intake_forms%rowtype;
   v_latest  uuid;
-  v_note    text := btrim(coalesce(p_note, ''));
+  -- Same trim as the table constraint: every whitespace kind, both ends.
+  v_note    text := regexp_replace(coalesce(p_note, ''), '^[[:space:]\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]+|[[:space:]\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]+$', '', 'g');
   v_uid     uuid := auth.uid();
   v_review  public.health_screen_reviews%rowtype;
 begin
@@ -16554,6 +16571,14 @@ begin
   if jsonb_typeof(v_intake.health_flags) is distinct from 'array' or jsonb_array_length(v_intake.health_flags) = 0 then
     raise exception 'review refused: this health screen has no flags to review' using errcode = 'P0001';
   end if;
+  -- The coach confirms what they were shown. If the screen's flags changed since (an edit to
+  -- the same intake), refuse: a review must be of the flags as they stand, read by the coach.
+  -- Checked under the intake row lock above, before the idempotent return and the insert.
+  if p_seen_flags is null or jsonb_typeof(p_seen_flags) is distinct from 'array'
+     or p_seen_flags is distinct from v_intake.health_flags then
+    raise exception 'review refused: the health screen changed since you opened it — reload and review the flags as they are now'
+      using errcode = 'P0001', hint = 'stale';
+  end if;
   if char_length(v_note) < 3 then
     raise exception 'review refused: say what you checked (for example: talked it through, doctor''s clearance on file)' using errcode = 'P0001', hint = 'note';
   end if;
@@ -16576,10 +16601,10 @@ begin
                             'reviewed_at', v_review.reviewed_at);
 end $fn$;
 
-revoke all on function public.review_health_screen(uuid, text) from public, anon;
-grant execute on function public.review_health_screen(uuid, text) to authenticated, service_role;
-comment on function public.review_health_screen(uuid, text) is
-  'P26: coach records a review of a flagged health screen (the client''s latest submitted intake). Coach-only, tenant-checked, note required. Satisfies release_checklist() health for that intake and flag set only.';
+revoke all on function public.review_health_screen(uuid, jsonb, text) from public, anon;
+grant execute on function public.review_health_screen(uuid, jsonb, text) to authenticated, service_role;
+comment on function public.review_health_screen(uuid, jsonb, text) is
+  'P26/P28: coach records a review of a flagged health screen (the client''s latest submitted intake). Coach-only, tenant-checked, note required (whitespace-trimmed, 3-1000 chars). p_seen_flags must equal the screen''s flags now, else refused as stale. Satisfies release_checklist() health for that intake and flag set only.';
 
 -- release_checklist(): verbatim re-issue of 20260906180000 except item 4 (health), which also
 -- accepts a health_screen_reviews row for the same intake and flags, and returns intake_id so

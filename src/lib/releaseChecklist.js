@@ -31,16 +31,26 @@ export function offerNoNutrition(chk) {
 // else (clear, reviewed, no screen, unreadable, an older checklist without intake_id) offers
 // nothing. The database still decides: review_health_screen() refuses a stale or unflagged
 // screen, and release_checklist() honours a review only for the same intake and flags.
+// P28: `flags` is the database's array exactly as shown to the coach (not re-mapped), because
+// the review sends it back as p_seen_flags and the database refuses if the screen's flags are
+// no longer exactly these.
 export function healthReviewTarget(chk) {
   const h = chk?.health;
   if (!h || h.ok === true || h.state !== "flagged" || !h.intake_id) return null;
-  const flags = Array.isArray(h.flags) ? h.flags.map(String) : [];
+  const flags = Array.isArray(h.flags) ? [...h.flags] : [];
   if (flags.length === 0) return null;
   return { intakeId: h.intake_id, flags };
 }
 
+// P28: the database refused because the screen's flags changed while the review box was open.
+// The panel reloads the checklist and asks the coach to read the new flags.
+export function isStaleReviewError(err) {
+  return /health screen changed since you opened it/.test(String(err?.message ?? err ?? ""));
+}
+
 // Same rule as review_health_screen(): 3 to 1000 characters after trimming. Returns the
-// problem in words, or null when the note will be accepted.
+// problem in words, or null when the note will be accepted. JavaScript's trim() removes the
+// same whitespace set the database trims (spaces, tabs, line breaks, Unicode spaces).
 export function healthReviewNoteProblem(note) {
   const n = String(note ?? "").trim().length;
   if (n < 3) return "Say what you checked first.";

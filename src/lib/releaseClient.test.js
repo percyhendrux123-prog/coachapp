@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { checklistLines, isReadyToRelease, offerNoNutrition, releaseOutcomeLine, refusalText, runRelease, healthReviewTarget, healthReviewNoteProblem, healthFlagLabel } from "./releaseChecklist.js";
+import { checklistLines, isReadyToRelease, offerNoNutrition, releaseOutcomeLine, refusalText, runRelease, healthReviewTarget, healthReviewNoteProblem, healthFlagLabel, isStaleReviewError } from "./releaseChecklist.js";
 
 const chk = (o = {}) => ({
   program: { ok: true, state: "draft", detail: "Program draft (5 days)" },
@@ -166,4 +166,29 @@ test("P26: the review note follows the database rule (3 to 1000 characters, trim
   assert.equal(healthFlagLabel("parq_chest_pain"), "chest pain");
   assert.equal(healthFlagLabel("medications"), "medications");
   assert.equal(healthFlagLabel(""), "unnamed flag");
+});
+
+// P28 (review P27 finding 1): the confirmation must carry the flags the coach was shown, so the
+// database can refuse when the screen was edited in between.
+test("P28: the review target keeps the database's flag array exactly; stale refusals are recognised", async () => {
+  const shown = ["parq_heart_condition", "medications"];
+  const t = healthReviewTarget(chk({ health: { ok: false, state: "flagged", flags: shown, intake_id: "i-1", detail: "x" } }));
+  assert.deepEqual(t.flags, shown);
+  assert.notEqual(t.flags, shown, "a copy, so the panel cannot mutate the checklist");
+  assert.equal(isStaleReviewError({ message: "review refused: the health screen changed since you opened it — reload and review the flags as they are now" }), true);
+  assert.equal(isStaleReviewError({ message: "review refused: say what you checked" }), false);
+  assert.equal(isStaleReviewError(null), false);
+  const { readFile } = await import("node:fs/promises");
+  const src = await readFile(new URL("./releaseClient.js", import.meta.url), "utf8");
+  assert.match(src, /export async function reviewHealthScreen\(intakeId, seenFlags, note\)/);
+  assert.match(src, /rpc\("review_health_screen", \{ p_intake_id: intakeId, p_seen_flags: seenFlags, p_note: note \}\)/,
+    "the RPC call sends the shown flags as p_seen_flags");
+});
+
+// P28 (review P27 finding 2): whitespace of every kind is not a note.
+test("P28: tabs, line breaks and Unicode spaces alone are not a note", () => {
+  for (const blank of ["\t\t\t", "\n\n\n", "\r\n\r\n", " \t\n ", "\u00a0\u00a0\u00a0", "\u3000\u2003\ufeff\u202f"]) {
+    assert.equal(healthReviewNoteProblem(blank), "Say what you checked first.", JSON.stringify(blank));
+  }
+  assert.equal(healthReviewNoteProblem("\t\n GP letter on file \n\t"), null);
 });

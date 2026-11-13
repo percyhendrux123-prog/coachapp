@@ -52,7 +52,7 @@ import {
 import { daysOutLabel, prepMissingShowDate, classificationOf, classificationLabel } from "../lib/clientType";
 import { recordActivity } from "../lib/activity";
 import { getReleaseChecklist, releaseClient, reviewHealthScreen } from "../lib/releaseClient";
-import { checklistLines, isReadyToRelease, offerNoNutrition, runRelease, healthReviewTarget, healthReviewNoteProblem, healthFlagLabel } from "../lib/releaseChecklist";
+import { checklistLines, isReadyToRelease, offerNoNutrition, runRelease, healthReviewTarget, healthReviewNoteProblem, healthFlagLabel, isStaleReviewError } from "../lib/releaseChecklist";
 import BodyMetricsConfirm from "../components/BodyMetricsConfirm";
 import AppGate from "../components/AppGate";
 
@@ -1939,7 +1939,7 @@ function PingPushButton({ clientId }) {
 // the client could not be released at all. The safety intent stays: nothing is inferred, the
 // coach reads the flags, writes what they checked, and confirms. The database records who and
 // when, and the review counts only for this screen and these flags.
-function HealthScreenReview({ target, onReviewed }) {
+function HealthScreenReview({ target, onReviewed, onStale }) {
   const [open, setOpen] = useState(false);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
@@ -1949,8 +1949,10 @@ function HealthScreenReview({ target, onReviewed }) {
   async function confirm() {
     if (problem) { setErr(problem); return; }
     setBusy(true); setErr(null);
-    try { await reviewHealthScreen(target.intakeId, note.trim()); setOpen(false); setNote(""); onReviewed?.(); }
+    // P28: send back the exact flags shown above; the database refuses if they changed since.
+    try { await reviewHealthScreen(target.intakeId, target.flags, note.trim()); setOpen(false); setNote(""); onReviewed?.(); }
     catch (e) {
+      if (isStaleReviewError(e)) { setBusy(false); onStale?.(); return; }
       const m = String(e?.message ?? e);
       setErr(m.startsWith("review refused: ") ? m.slice("review refused: ".length) : m);
     }
@@ -2005,6 +2007,7 @@ function ReleasePanel({ client, onReleased }) {
   const [noNutrition, setNoNutrition] = useState(false);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState(null); // { ok, text, claimLink? }
+  const [staleReview, setStaleReview] = useState(false); // P28: last review refused as stale
   const load = useCallback(() => {
     setChk(undefined);
     getReleaseChecklist(client.id).then(setChk).catch(() => setChk(null));
@@ -2049,7 +2052,16 @@ function ReleasePanel({ client, onReleased }) {
             </li>
           ))}
           {chk && healthReviewTarget(chk) && (
-            <li><HealthScreenReview target={healthReviewTarget(chk)} onReviewed={load} /></li>
+            <li key={`hsr-${healthReviewTarget(chk).intakeId}-${JSON.stringify(healthReviewTarget(chk).flags)}`}>
+              {staleReview && (
+                <p className="mt-1 max-w-md text-xs text-danger">
+                  The health screen changed while you had it open. Nothing was recorded. Read the flags as they are now and review again.
+                </p>
+              )}
+              <HealthScreenReview target={healthReviewTarget(chk)}
+                onReviewed={() => { setStaleReview(false); load(); }}
+                onStale={() => { setStaleReview(true); load(); }} />
+            </li>
           )}
           {chk && offerNoNutrition(chk) && (
             <li>
