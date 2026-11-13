@@ -52,7 +52,7 @@ it along the way. Keep it private: two of them work like passwords.
    Wait until it finishes (one to three minutes).
 
 6. Open the database setup file:
-   **PUBLISH-TODO-REPO-URL/blob/main/supabase/setup/database.sql** and click **Raw** (top right
+   **https://github.com/percyhendrux123-prog/coachapp/blob/main/supabase/setup/database.sql** and click **Raw** (top right
    of the file). You should see a long page of plain text that starts with
    `-- Coach app database setup`.
 
@@ -107,7 +107,7 @@ it along the way. Keep it private: two of them work like passwords.
 
 15. Click this button:
 
-    [Deploy to Netlify](https://app.netlify.com/start/deploy?repository=PUBLISH-TODO-REPO-URL)
+    [Deploy to Netlify](https://app.netlify.com/start/deploy?repository=https://github.com/percyhendrux123-prog/coachapp)
 
     You should see a Netlify page about deploying the coach app.
 

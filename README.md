@@ -46,10 +46,7 @@ Platform
 
 ## Get your own copy (no code)
 
-<!-- PUBLISH-TODO: replace PUBLISH-TODO-REPO-URL below and in SETUP.md with the public repo URL,
-     for example https://github.com/<owner>/<repo>. The button only works once the repo is public. -->
-
-[![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=PUBLISH-TODO-REPO-URL)
+[![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/percyhendrux123-prog/coachapp)
 
 Three steps: open this page, click the button, follow [SETUP.md](SETUP.md). SETUP.md is written for
 someone who has never deployed anything: free Supabase and Netlify accounts, one database file
