@@ -85,7 +85,9 @@ warns about JWT-only gateways. On a gateway that rejects non-JWT API keys, signe
 before the handler runs: those functions still deploy with gateway JWT verification. A publishable
 key is not a user JWT and never replaces sign-in or a connector token.
 
-Check those paths on your own project before inviting clients. The tests exercise local key
+Observed 2026-11-12 on a hosted project: signed-out POSTs to `intake-submit` and `system-checkout`, both deployed
+with gateway JWT verification and sent with a publishable key, reached the handler (it answered with its
+own validation error, not `401 Invalid JWT`). Check those paths on your own project before inviting clients. The tests exercise local key
 validation and request headers, not a hosted Supabase gateway. No gateway flags or handler
 authorization checks were loosened for this change. If your gateway rejects publishable keys,
 a still-enabled legacy anon key is only a temporary fallback; a developer must review each
