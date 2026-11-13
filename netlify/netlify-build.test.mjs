@@ -7,6 +7,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { checkSettings, listFunctions, projectRefFromUrl, rewriteWellKnown } from "../scripts/netlify-build.mjs";
+import { createClient } from "@supabase/supabase-js";
 
 const jwt = (payload) =>
   [{ alg: "HS256" }, payload].map((p) => Buffer.from(JSON.stringify(p)).toString("base64url")).concat("sig").join(".");
@@ -28,6 +29,13 @@ test("checkSettings passes a correct pair", () => {
   }), []);
 });
 
+test("checkSettings accepts a publishable public key without requiring legacy keys", () => {
+  assert.deepEqual(checkSettings({
+    VITE_SUPABASE_URL: "https://abcdefghijklmnopqrst.supabase.co",
+    VITE_SUPABASE_ANON_KEY: "sb_publishable_test-key_123",
+  }), []);
+});
+
 test("checkSettings explains each wrong value in plain words", () => {
   const empty = checkSettings({});
   assert.equal(empty.length, 2);
@@ -40,8 +48,101 @@ test("checkSettings explains each wrong value in plain words", () => {
   assert.match(checkSettings({ VITE_SUPABASE_URL: url, VITE_SUPABASE_ANON_KEY: jwt({ role: "service_role" }) })[0],
     /SECRET key/);
   assert.match(checkSettings({ VITE_SUPABASE_URL: url, VITE_SUPABASE_ANON_KEY: "sb_secret_abc" })[0], /SECRET key/);
-  assert.match(checkSettings({ VITE_SUPABASE_URL: url, VITE_SUPABASE_ANON_KEY: "sb_publishable_abc" })[0],
-    /Legacy API Keys/);
+  assert.match(checkSettings({ VITE_SUPABASE_URL: url, VITE_SUPABASE_ANON_KEY: "sbp_test-access-token" })[0],
+    /must be a publishable key/);
+});
+
+test("checkSettings rejects malformed public keys and JWTs that are not legacy anon keys", () => {
+  for (const key of [
+    "sb_publishable_", "sb_publishable_test key", "random-text", "eyJnot-a-jwt",
+    jwt({ role: "authenticated" }), jwt({}),
+  ]) {
+    const problems = checkSettings({
+      VITE_SUPABASE_URL: "https://abcdefghijklmnopqrst.supabase.co",
+      VITE_SUPABASE_ANON_KEY: key,
+    });
+    assert.equal(problems.length, 1, `must reject ${key}`);
+    assert.match(problems[0], /must be a publishable key/);
+  }
+});
+
+test("checkSettings never echoes secret keys in its problem messages", () => {
+  for (const key of ["sb_secret_test-only-secret", jwt({ role: "service_role" })]) {
+    const problems = checkSettings({
+      VITE_SUPABASE_URL: "https://abcdefghijklmnopqrst.supabase.co",
+      VITE_SUPABASE_ANON_KEY: key,
+    });
+    assert.equal(problems.length, 1);
+    assert.match(problems[0], /SECRET key/);
+    assert.ok(!problems[0].includes(key));
+  }
+});
+
+// Characterize the real locked SDK's outgoing headers, not a hosted gateway response.
+// The response below is a local stub; no request leaves the test process.
+for (const [format, key] of [["publishable", "sb_publishable_test-key_123"], ["legacy anon", jwt({ role: "anon" })]]) {
+  test(`the SDK preserves the ${format} public-key and user-token boundary`, async () => {
+    const url = "https://abcdefghijklmnopqrst.supabase.co";
+    for (const userToken of [null, jwt({ role: "authenticated", sub: "test-user" })]) {
+      const calls = [];
+      const client = createClient(url, key, {
+        auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+        ...(userToken ? { accessToken: async () => userToken } : {}),
+        global: { fetch: async (input, init) => {
+          calls.push({ url: String(input), headers: new Headers(init.headers) });
+          return Response.json({ localStub: true });
+        } },
+      });
+      const { error } = await client.functions.invoke("intake-submit", { body: { token: "test-token" } });
+      assert.equal(error, null);
+      assert.equal(calls.length, 1);
+      assert.equal(calls[0].url, `${url}/functions/v1/intake-submit`);
+      assert.equal(calls[0].headers.get("apikey"), key);
+      assert.equal(calls[0].headers.get("authorization"), `Bearer ${userToken || key}`);
+    }
+  });
+}
+
+test("the MCP proxy keeps public keys separate from connector credentials for both formats", async (t) => {
+  const values = {
+    SUPABASE_URL: "https://abcdefghijklmnopqrst.supabase.co",
+    SUPABASE_SERVICE_ROLE_KEY: "test-only-not-a-real-service-key",
+    SUPABASE_ANON_KEY: "",
+    VITE_SUPABASE_ANON_KEY: "",
+    MCP_UPSTREAM: "https://abcdefghijklmnopqrst.supabase.co/functions/v1/mcp",
+  };
+  const previous = Object.fromEntries(Object.keys(values).map((name) => [name, process.env[name]]));
+  t.after(() => {
+    for (const [name, value] of Object.entries(previous)) {
+      if (value === undefined) delete process.env[name];
+      else process.env[name] = value;
+    }
+  });
+  Object.assign(process.env, values);
+  const calls = [];
+  t.mock.method(globalThis, "fetch", async (input, init) => {
+    calls.push({ url: String(input), headers: new Headers(init.headers) });
+    return Response.json({ localStub: true });
+  });
+  for (const [format, key] of [["publishable", "sb_publishable_test-key_123"], ["legacy", jwt({ role: "anon" })]]) {
+    process.env.VITE_SUPABASE_ANON_KEY = key;
+    const { default: proxy } = await import(`./functions/mcp-oauth.mjs?key-format-test=${format}`);
+    const before = calls.length;
+    const missing = await proxy(new Request("https://app.example.com/mcp"));
+    assert.equal(missing.status, 401, "a configured public key does not authorize a connector");
+    assert.equal(calls.length, before);
+    const response = await proxy(new Request("https://app.example.com/mcp", {
+      method: "POST",
+      headers: { authorization: "Bearer coach_mcp_test-connector", "content-type": "application/json" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "ping" }),
+    }));
+    assert.equal(response.status, 200);
+    assert.equal(calls.length, before + 1);
+    assert.equal(calls[before].url, values.MCP_UPSTREAM);
+    assert.equal(calls[before].headers.get("apikey"), key);
+    assert.equal(calls[before].headers.get("authorization"), `Bearer ${key}`);
+    assert.equal(calls[before].headers.get("x-api-key"), "coach_mcp_test-connector");
+  }
 });
 
 test("listFunctions splits functions by their verify_jwt config", () => {
