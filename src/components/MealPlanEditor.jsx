@@ -38,7 +38,7 @@ export default function MealPlanEditor({ plan, onChange }) {
           <div key={mi} className="rounded-lg border border-ink/10 p-2.5">
             <div className="flex items-center gap-2">
               <input value={m.name ?? ""} onChange={(e) => setMeal(mi, { name: e.target.value })} placeholder="Meal name"
-                className="flex-1 rounded-md border border-ink/10 px-2 py-1 text-sm font-medium" />
+                className="min-w-0 flex-1 rounded-md border border-ink/10 px-2 py-1 text-sm font-medium" />
               <span className="text-xs opacity-50">{mealKcal} kcal</span>
               <button onClick={() => removeMeal(mi)} className="text-xs opacity-40 hover:opacity-100" title="Remove meal">✕</button>
             </div>
@@ -46,7 +46,7 @@ export default function MealPlanEditor({ plan, onChange }) {
               {(m.items ?? []).map((it, ii) => (
                 <div key={ii} className="flex items-center gap-1.5">
                   <input value={it.food ?? ""} onChange={(e) => setItem(mi, ii, { food: e.target.value })} placeholder="Food"
-                    className="flex-1 rounded-md border border-ink/10 px-2 py-1 text-sm" />
+                    className="min-w-0 flex-1 rounded-md border border-ink/10 px-2 py-1 text-sm" />
                   <input value={it.qty ?? ""} onChange={(e) => setItem(mi, ii, { qty: e.target.value })} placeholder="qty"
                     className="w-20 rounded-md border border-ink/10 px-2 py-1 text-sm" />
                   <input type="number" value={it.kcal ?? 0} onChange={(e) => setItem(mi, ii, { kcal: numOr(e.target.value) })}
