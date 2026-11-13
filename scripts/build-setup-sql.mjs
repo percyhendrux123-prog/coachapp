@@ -7,11 +7,14 @@
 //
 // Contents, in order:
 //   1. a guard that stops (and changes nothing) if the database is already set up,
-//      then the two extensions the schema needs (pg_net, pg_cron)
+//      then the two extensions the schema needs (pg_net, pg_cron), then Supabase's usual
+//      API default grants for the length of the setup (so the "Automatically expose new
+//      tables" box on the new-project form does not change the result)
 //   2. every file in supabase/migrations/, in filename order, unchanged
 //   3. supabase/seed.sql (generic reference vocabulary)
 //   4. rows in supabase_migrations.schema_migrations, so a developer can later run
-//      `supabase db push` against the same project and only new migrations apply
+//      `supabase db push` against the same project and only new migrations apply,
+//      then the project's own default grants put back as they were
 //
 // The SQL editor sends the file as one request, which Postgres runs as one transaction:
 // if any statement fails, nothing is kept and the coach can simply run it again.
@@ -54,6 +57,24 @@ $guard$;
 create extension if not exists pg_net with schema extensions;
 create extension if not exists pg_cron with schema pg_catalog;
 grant usage on schema cron to postgres;
+
+-- API grants. The new-project form has a setting, "Automatically expose new tables". When it
+-- is off, tables and functions made here get no grants for the app's sign-ins (anon,
+-- authenticated) or for the server functions (service_role), and the app fails with
+-- "permission denied". The migrations below were written and tested with it on. So: turn the
+-- same default grants on for the length of this setup, and at the end put back exactly what
+-- the project had. The result is the same whichever way the box was set.
+-- (The record is kept in a session setting, not a table: the SQL editor's "Run and enable RLS"
+-- button adds a statement for every table this file creates, so a scratch table would trip it.)
+select set_config('coachapp.setup_default_acl', coalesce((
+  select string_agg(d.defaclobjtype::text || ':' || a.grantee::text || ':' || a.privilege_type, ',')
+    from pg_default_acl d
+   cross join lateral aclexplode(d.defaclacl) a
+   where d.defaclrole = current_user::regrole
+     and d.defaclnamespace = 'public'::regnamespace), ''), false);
+alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
+alter default privileges in schema public grant all on sequences to anon, authenticated, service_role;
+alter default privileges in schema public grant all on functions to anon, authenticated, service_role;
 `);
 
   for (const f of files) {
@@ -84,6 +105,32 @@ alter table supabase_migrations.schema_migrations enable row level security;
 insert into supabase_migrations.schema_migrations (version, name) values
 ${rows.join(",\n")}
 on conflict (version) do nothing;
+
+-- Put the project's own default grants back (see "API grants" at the top). Tables and
+-- functions made above keep the grants they got; only the setting for future objects returns
+-- to what it was before this file ran.
+do $restore$
+declare
+  r record;
+begin
+  for r in
+    select a.grantee::regrole::text as grantee, a.privilege_type,
+           case d.defaclobjtype when 'r' then 'tables' when 'S' then 'sequences' when 'f' then 'functions' end as kind
+      from pg_default_acl d
+     cross join lateral aclexplode(d.defaclacl) a
+     where d.defaclrole = current_user::regrole
+       and d.defaclnamespace = 'public'::regnamespace
+       and d.defaclobjtype in ('r', 'S', 'f')
+       and a.grantee in ('anon'::regrole, 'authenticated'::regrole, 'service_role'::regrole)
+       and position(',' || d.defaclobjtype::text || ':' || a.grantee::text || ':' || a.privilege_type || ','
+                    in ',' || current_setting('coachapp.setup_default_acl') || ',') = 0
+  loop
+    execute format('alter default privileges in schema public revoke %s on %s from %I',
+                   r.privilege_type, r.kind, r.grantee);
+  end loop;
+end
+$restore$;
+select set_config('coachapp.setup_default_acl', '', false);
 
 -- The SQL editor shows the result of the last statement.
 select 'Setup complete' as result;

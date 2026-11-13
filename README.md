@@ -56,9 +56,9 @@ The button asks for:
 
 | Name | What it is |
 | --- | --- |
-| `VITE_SUPABASE_URL` | Your Supabase Project URL (Project Settings > Data API) |
-| `VITE_SUPABASE_ANON_KEY` | Your Supabase anon public key, starts with `eyJ` (Project Settings > API Keys > Legacy API Keys) |
-| `SUPABASE_ACCESS_TOKEN` | A Supabase access token, so each production deploy can install the server functions |
+| `VITE_SUPABASE_URL` | Your Supabase Project URL, `https://<ref>.supabase.co` (Project Overview, Copy next to the address) |
+| `VITE_SUPABASE_ANON_KEY` | Your Supabase anon public key, starts with `eyJ` (Project Settings > API Keys > View legacy API keys) |
+| `SUPABASE_ACCESS_TOKEN` | A Supabase access token (scoped to the project, Full access, no expiry), so each production deploy can install the server functions |
 
 On Netlify the build runs `scripts/netlify-build.mjs`: it checks those values and stops with a plain
 message if one is wrong, builds the app, writes the site address into `/.well-known/`, and on
@@ -94,6 +94,13 @@ production deploys installs every function in `supabase/functions/` with the Sup
    is every migration plus the seed in one transaction, and it records the migrations as applied
    so a later `supabase db push` only applies new ones. It is generated; after adding a migration
    run `node scripts/build-setup-sql.mjs` (the test suite fails if you forget).
+
+   The migrations expect Supabase's usual API grants ("Automatically expose new tables" ticked
+   when the project was created). `database.sql` turns them on for its own run and then restores
+   the project's setting, so it works either way. `supabase db push` does not: on a project
+   created with that box unticked, several tables and functions end up with no grants for
+   `anon`, `authenticated` and `service_role`, and the app fails with "permission denied". Use
+   `database.sql` for a fresh project in that case.
 
    `00000000000000_initial_schema.sql` creates the full schema, storage buckets and policies. The
    later files are forward migrations. Then create two vault secrets used by scheduled jobs and the
