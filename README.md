@@ -57,13 +57,46 @@ The button asks for:
 | Name | What it is |
 | --- | --- |
 | `VITE_SUPABASE_URL` | Your Supabase Project URL, `https://<ref>.supabase.co` (Project Overview, Copy next to the address) |
-| `VITE_SUPABASE_ANON_KEY` | Your Supabase anon public key, starts with `eyJ` (Project Settings > API Keys > View legacy API keys) |
+| `VITE_SUPABASE_ANON_KEY` | Your Supabase Publishable key, starts with `sb_publishable_` (Project Settings > API Keys). A legacy anon public `eyJ...` key is also accepted; never use a Secret or service_role key. Keep this variable name for either public-key format. |
 | `SUPABASE_ACCESS_TOKEN` | A Supabase access token (scoped to the project, Full access, no expiry), so each production deploy can install the server functions |
 
 On Netlify the build runs `scripts/netlify-build.mjs`: it checks those values and stops with a plain
 message if one is wrong, builds the app, writes the site address into `/.well-known/`, and on
 production deploys installs every function in `supabase/functions/` with the Supabase CLI and sets
 `APP_ORIGIN` / `ALLOWED_ORIGINS`. Set `SKIP_FUNCTION_DEPLOY=1` to deploy functions yourself instead.
+
+### API-key compatibility
+
+The build accepts a publishable key or a legacy anon JWT with `role: "anon"`. This is a local
+format/safety check, not proof that the key belongs to your project or that a hosted request works.
+The old `eyJ`-only requirement was in the build script, not in `createClient`.
+
+There is a separate Edge Function gateway boundary. The locked Supabase JS SDK sends the public
+key in both `apikey` and `Authorization: Bearer ...` when nobody is signed in. After sign-in it
+sends the user's session JWT in `Authorization` instead. The Netlify `/mcp` proxy always sends the
+public key as Bearer and sends the real connector token separately in `x-api-key`.
+
+[Supabase's authorization-header reference](https://supabase.com/docs/guides/functions/auth-headers)
+documents migration compatibility for publishable keys at the `verify_jwt` gateway. Its
+[migration guide](https://supabase.com/docs/guides/getting-started/migrating-to-new-api-keys) also
+warns about JWT-only gateways. On a gateway that rejects non-JWT API keys, signed-out calls to
+`intake-submit` (including health-screen links), `license-checkout`, `system-checkout`,
+`system-provision`, `coaching-provision`, and the `/mcp` proxy can fail with `401` / `Invalid JWT`
+before the handler runs: those functions still deploy with gateway JWT verification. A publishable
+key is not a user JWT and never replaces sign-in or a connector token.
+
+Check those paths on your own project before inviting clients. The tests exercise local key
+validation and request headers, not a hosted Supabase gateway. No gateway flags or handler
+authorization checks were loosened for this change. If your gateway rejects publishable keys,
+a still-enabled legacy anon key is only a temporary fallback; a developer must review each
+function's own authorization before changing its gateway setting. Never use a secret key as a
+workaround or disable JWT verification globally.
+
+**This is not a complete retirement migration.** Edge Functions still read Supabase's legacy
+`SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY` environment variables (for example,
+`supabase/functions/_shared/challenge.ts`), and the optional Netlify OAuth flow uses
+`SUPABASE_SERVICE_ROLE_KEY`. Those server-side reads need a separate migration and verification
+before legacy keys can be disabled. Changing `VITE_SUPABASE_ANON_KEY` alone does not do that.
 
 ## Requirements (developer setup)
 
