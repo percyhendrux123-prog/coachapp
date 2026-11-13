@@ -1,0 +1,122 @@
+{
+  "_notice": "Sample content, edit before use. Written for this repository as a generic starting point. It is not a prescription for any person: check each client's health screen and adjust exercises, sets and reps to them before you assign anything.",
+  "programs": [
+    {
+      "name": "Sample: Full Body Basics (3 days)",
+      "days": [
+        { "kind": "training", "label": "Day A: Full body", "groups": [
+          { "type": "straight", "exercises": [
+            { "name": "Goblet squat", "sets": [{ "target_reps": "8-10" }, { "target_reps": "8-10" }, { "target_reps": "8-10" }] },
+            { "name": "Incline push-up", "sets": [{ "target_reps": "8-12" }, { "target_reps": "8-12" }, { "target_reps": "8-12" }] },
+            { "name": "One-arm dumbbell row", "sets": [{ "target_reps": "10 each side" }, { "target_reps": "10 each side" }, { "target_reps": "10 each side" }] }
+          ] },
+          { "type": "straight", "exercises": [
+            { "name": "Front plank", "sets": [{ "target_reps": "20-30 s", "notes": "Stop when the hips start to sag." }, { "target_reps": "20-30 s" }] }
+          ] }
+        ] },
+        { "kind": "rest", "label": "Rest" },
+        { "kind": "training", "label": "Day B: Full body", "groups": [
+          { "type": "straight", "exercises": [
+            { "name": "Dumbbell Romanian deadlift", "sets": [{ "target_reps": "8-10" }, { "target_reps": "8-10" }, { "target_reps": "8-10" }] },
+            { "name": "Seated dumbbell shoulder press", "sets": [{ "target_reps": "8-10" }, { "target_reps": "8-10" }, { "target_reps": "8-10" }] },
+            { "name": "Lat pulldown", "sets": [{ "target_reps": "10-12" }, { "target_reps": "10-12" }, { "target_reps": "10-12" }] }
+          ] },
+          { "type": "straight", "exercises": [
+            { "name": "Glute bridge", "sets": [{ "target_reps": "12-15" }, { "target_reps": "12-15" }] }
+          ] }
+        ] },
+        { "kind": "rest", "label": "Rest" },
+        { "kind": "training", "label": "Day C: Full body", "groups": [
+          { "type": "straight", "exercises": [
+            { "name": "Split squat", "sets": [{ "target_reps": "8 each side" }, { "target_reps": "8 each side" }, { "target_reps": "8 each side" }] },
+            { "name": "Dumbbell bench press", "sets": [{ "target_reps": "8-10" }, { "target_reps": "8-10" }, { "target_reps": "8-10" }] },
+            { "name": "Seated cable row", "sets": [{ "target_reps": "10-12" }, { "target_reps": "10-12" }, { "target_reps": "10-12" }] }
+          ] },
+          { "type": "straight", "exercises": [
+            { "name": "Easy walk", "type": "cardio", "cardio": { "modality": "walk", "target_duration_min": 15, "target_intensity_rpe": 4, "notes": "Conversational pace." } }
+          ] }
+        ] },
+        { "kind": "rest", "label": "Rest" },
+        { "kind": "rest", "label": "Rest" }
+      ]
+    },
+    {
+      "name": "Sample: Upper / Lower (4 days)",
+      "days": [
+        { "kind": "training", "label": "Upper 1", "groups": [
+          { "type": "straight", "exercises": [
+            { "name": "Dumbbell bench press", "sets": [{ "target_reps": "6-8" }, { "target_reps": "6-8" }, { "target_reps": "6-8" }] },
+            { "name": "Chest-supported row", "sets": [{ "target_reps": "8-10" }, { "target_reps": "8-10" }, { "target_reps": "8-10" }] }
+          ] },
+          { "type": "superset", "exercises": [
+            { "name": "Dumbbell lateral raise", "sets": [{ "target_reps": "12-15" }, { "target_reps": "12-15" }] },
+            { "name": "Cable triceps pushdown", "sets": [{ "target_reps": "12-15" }, { "target_reps": "12-15" }] }
+          ] }
+        ] },
+        { "kind": "training", "label": "Lower 1", "groups": [
+          { "type": "straight", "exercises": [
+            { "name": "Back squat or leg press", "sets": [{ "target_reps": "6-8" }, { "target_reps": "6-8" }, { "target_reps": "6-8" }] },
+            { "name": "Dumbbell Romanian deadlift", "sets": [{ "target_reps": "8-10" }, { "target_reps": "8-10" }, { "target_reps": "8-10" }] }
+          ] },
+          { "type": "straight", "exercises": [
+            { "name": "Standing calf raise", "sets": [{ "target_reps": "12-15" }, { "target_reps": "12-15" }] }
+          ] }
+        ] },
+        { "kind": "rest", "label": "Rest" },
+        { "kind": "training", "label": "Upper 2", "groups": [
+          { "type": "straight", "exercises": [
+            { "name": "Seated dumbbell shoulder press", "sets": [{ "target_reps": "8-10" }, { "target_reps": "8-10" }, { "target_reps": "8-10" }] },
+            { "name": "Lat pulldown", "sets": [{ "target_reps": "8-10" }, { "target_reps": "8-10" }, { "target_reps": "8-10" }] }
+          ] },
+          { "type": "superset", "exercises": [
+            { "name": "Dumbbell curl", "sets": [{ "target_reps": "10-12" }, { "target_reps": "10-12" }] },
+            { "name": "Face pull", "sets": [{ "target_reps": "12-15" }, { "target_reps": "12-15" }] }
+          ] }
+        ] },
+        { "kind": "training", "label": "Lower 2", "groups": [
+          { "type": "straight", "exercises": [
+            { "name": "Trap bar or dumbbell deadlift", "sets": [{ "target_reps": "5-6" }, { "target_reps": "5-6" }, { "target_reps": "5-6" }] },
+            { "name": "Walking lunge", "sets": [{ "target_reps": "10 each side" }, { "target_reps": "10 each side" }] }
+          ] },
+          { "type": "straight", "exercises": [
+            { "name": "Dead bug", "sets": [{ "target_reps": "8 each side" }, { "target_reps": "8 each side" }] }
+          ] }
+        ] },
+        { "kind": "rest", "label": "Rest" },
+        { "kind": "rest", "label": "Rest" }
+      ]
+    },
+    {
+      "name": "Sample: Walk and Strength Starter",
+      "days": [
+        { "kind": "training", "label": "Strength 1", "groups": [
+          { "type": "circuit", "exercises": [
+            { "name": "Sit-to-stand from a bench", "sets": [{ "target_reps": "10" }, { "target_reps": "10" }] },
+            { "name": "Wall push-up", "sets": [{ "target_reps": "10" }, { "target_reps": "10" }] },
+            { "name": "Band row", "sets": [{ "target_reps": "12" }, { "target_reps": "12" }] }
+          ] }
+        ] },
+        { "kind": "training", "label": "Walk", "groups": [
+          { "type": "straight", "exercises": [
+            { "name": "Brisk walk", "type": "cardio", "cardio": { "modality": "walk", "target_duration_min": 20, "target_intensity_rpe": 5 } }
+          ] }
+        ] },
+        { "kind": "rest", "label": "Rest" },
+        { "kind": "training", "label": "Strength 2", "groups": [
+          { "type": "circuit", "exercises": [
+            { "name": "Step-up to a low step", "sets": [{ "target_reps": "8 each side" }, { "target_reps": "8 each side" }] },
+            { "name": "Dumbbell floor press", "sets": [{ "target_reps": "10" }, { "target_reps": "10" }] },
+            { "name": "Bird dog", "sets": [{ "target_reps": "6 each side" }, { "target_reps": "6 each side" }] }
+          ] }
+        ] },
+        { "kind": "training", "label": "Walk", "groups": [
+          { "type": "straight", "exercises": [
+            { "name": "Brisk walk", "type": "cardio", "cardio": { "modality": "walk", "target_duration_min": 20, "target_intensity_rpe": 5 } }
+          ] }
+        ] },
+        { "kind": "rest", "label": "Rest" },
+        { "kind": "rest", "label": "Rest" }
+      ]
+    }
+  ]
+}
