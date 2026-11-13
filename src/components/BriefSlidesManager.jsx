@@ -102,7 +102,7 @@ export default function BriefSlidesManager({ tenantId }) {
             >
               {busy ? "Working…" : full ? `Full at ${MAX_SLIDES}` : "Add slide"}
             </button>
-            <span className="text-xs opacity-50">{rows.length} of {MAX_SLIDES} · JPG, PNG, or WebP · up to 8 MB</span>
+            <span className="text-xs opacity-50">{rows.length} of {MAX_SLIDES} · JPG, PNG, or WebP · up to 6 MB</span>
           </div>
           {note && <p className="mt-2 text-sm opacity-70">{note}</p>}
           {err && <p className="mt-2 text-sm text-danger" role="alert">{err}</p>}

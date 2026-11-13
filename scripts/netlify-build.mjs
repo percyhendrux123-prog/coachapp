@@ -43,7 +43,7 @@ export function checkSettings(env) {
   } else if (key.startsWith("sb_secret_") || /service_role/.test(decodeJwtRole(key) || "")) {
     problems.push("VITE_SUPABASE_ANON_KEY holds a SECRET key. Remove it now and paste the anon public key instead. Secret keys must never go in a VITE_ setting.");
   } else if (!key.startsWith("eyJ")) {
-    problems.push("VITE_SUPABASE_ANON_KEY must be the key labelled anon public (it starts with eyJ). If Supabase shows a key starting with sb_publishable_, open the Legacy API Keys tab and copy the anon key there instead.");
+    problems.push("VITE_SUPABASE_ANON_KEY must be the key labelled anon public (it starts with eyJ). If Supabase shows a key starting with sb_publishable_, click View legacy API keys (or the Legacy API Keys tab) under Project Settings > API Keys and copy the anon key there instead.");
   }
   return problems;
 }
@@ -142,7 +142,7 @@ function main() {
     return;
   }
   if (!env.SUPABASE_ACCESS_TOKEN && !dryRun) {
-    fail("SUPABASE_ACCESS_TOKEN is empty. The app's server functions (client invites, sign-in codes, check-ins) cannot be installed without it. Create one at supabase.com/dashboard/account/tokens and paste it.");
+    fail("SUPABASE_ACCESS_TOKEN is empty. The app's server functions (client invites, sign-in codes, check-ins) cannot be installed without it. Create one at supabase.com/dashboard/account/tokens (Resource access: your project; Permissions: Full access; Expires: Never) and paste it.");
   }
 
   const { verify, noVerify } = listFunctions();

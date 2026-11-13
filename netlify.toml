@@ -31,6 +31,6 @@
 # "Deploy to Netlify" button: the form asks for these by name. The text is the label shown.
 # Full walkthrough: SETUP.md.
 [template.environment]
-  VITE_SUPABASE_URL = "Supabase Project URL, e.g. https://abcdefghijklmnopqrst.supabase.co (Supabase: Project Settings > Data API)"
-  VITE_SUPABASE_ANON_KEY = "Supabase anon public key, starts with eyJ (Supabase: Project Settings > API Keys > Legacy API Keys)"
-  SUPABASE_ACCESS_TOKEN = "Supabase access token, starts with sbp_, lets the deploy install the server functions (supabase.com/dashboard/account/tokens)"
+  VITE_SUPABASE_URL = "Supabase Project URL, e.g. https://abcdefghijklmnopqrst.supabase.co (Supabase: Project Overview, Copy next to the address)"
+  VITE_SUPABASE_ANON_KEY = "Supabase anon public key, starts with eyJ (Supabase: Project Settings > API Keys > View legacy API keys)"
+  SUPABASE_ACCESS_TOKEN = "Supabase access token, starts with sbp_, lets the deploy install the server functions (supabase.com/dashboard/account/tokens: Expires Never, your project, Full access)"

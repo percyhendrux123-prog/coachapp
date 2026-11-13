@@ -47,6 +47,9 @@ it along the way. Keep it private: two of them work like passwords.
    - **Database password**: click **Generate a password**, then copy it into your note under
      "Database password". You will probably never need it, but keep it.
    - **Region**: the one closest to you and your clients.
+   - **Security**: leave the boxes as they are. (Supabase suggests unticking **Automatically
+     expose new tables**. Either way works: the setup file in step 9 gives the app the access it
+     needs.)
 
    Click **Create new project**. You should see a page that says the project is being set up.
    Wait until it finishes (one to three minutes).
@@ -58,9 +61,10 @@ it along the way. Keep it private: two of them work like passwords.
 
 7. Select all of that text (Cmd+A on a Mac, Ctrl+A on Windows) and copy it (Cmd+C or Ctrl+C).
 
-8. Back in Supabase, click **SQL Editor** in the left sidebar. (SQL is the language databases
-   understand. You do not need to read it.) Open a new, empty query tab: click **New query**, or
-   the **+** button next to the open tabs.
+8. Back in Supabase, click **SQL Editor** in the left sidebar (the sidebar shows icons; point at
+   one to see its name). (SQL is the language databases understand. You do not need to read it.)
+   If a box about snippets appears, click **Understood**. Use a new, empty query tab: it often
+   opens on one already; if not, click **New query**, or the **+** button next to the open tabs.
 
 9. Click inside the empty editor and paste once (Cmd+V or Ctrl+V). It can take a few seconds to
    appear. The first line should read `-- Coach app database setup`.
@@ -84,22 +88,36 @@ it along the way. Keep it private: two of them work like passwords.
 
 ## Part 3. Copy three values from Supabase
 
-12. In Supabase, click **Project Settings** (the gear at the bottom of the left sidebar), then
-    **Data API**. Copy the **Project URL** into your note under "Supabase URL". It looks like
-    `https://abcdefghijklmnopqrst.supabase.co`.
+12. In Supabase, click **Project Overview** (the house icon at the top of the left sidebar). Under
+    your project's name is its address, with a **Copy** button next to it. Copy it (if Copy opens
+    a small menu, pick **Project URL**) into your note under "Supabase URL". It looks like
+    `https://abcdefghijklmnopqrst.supabase.co`, with nothing after `.co`. (Supabase also shows an
+    "API URL" ending in `/rest/v1/`. That one is not the right value here.)
 
-13. Still in Project Settings, click **API Keys**. If you see two tabs, open **Legacy API Keys**.
-    Copy the key labelled **anon** **public** into your note under "Anon key". It is a long text
-    starting with `eyJ`. This key is meant to be public: it only lets the app talk to the database
-    under the rules the database enforces.
+13. Click **Project Settings** (the gear at the bottom of the left sidebar), then **API Keys**.
+    The app uses the older style of key: click **View legacy API keys** (on some screens it is a
+    tab called **Legacy API Keys**). Copy the key labelled **anon** **public** into your note
+    under "Anon key". It is a long text starting with `eyJ`. This key is meant to be public: it
+    only lets the app talk to the database under the rules the database enforces.
 
-    Do not copy the **service_role** key here. That one is secret.
+    Do not copy the **service_role** key here. That one is secret. Keys starting with
+    `sb_publishable_` or `sb_secret_` are the newer style and are not the one to copy.
 
 14. Open **supabase.com/dashboard/account/tokens** (your account's Access Tokens page). Click
-    **Generate new token**, name it `netlify deploy`, and click **Generate token**. Copy it into
-    your note under "Access token". It starts with `sbp_` and is shown only once.
+    **Generate new token** and fill in the form:
+    - **Name**: `netlify deploy`.
+    - **Expires in**: **Never**. (Netlify uses this token on every update of the app. If it
+      expires, updates stop installing the server functions until you make a new token and paste
+      it into Netlify under **Site configuration > Environment variables**.)
+    - **Resource access**: **Project**. Then pick your organization and your project.
+    - **Permissions**: open the box that says **Preset · No access** and pick **Full access**.
+      The default, No access, makes a token that cannot install anything.
 
-    What it is: an access token lets another service act on your Supabase account. Netlify uses it
+    Click **Review access**. Supabase marks the token **High risk**; that is expected for a token
+    that installs code. Click **Create token**, then copy it into your note under "Access token".
+    It starts with `sbp_` and is shown only once.
+
+    What it is: an access token lets another service act on your Supabase project. Netlify uses it
     to install the app's server functions into your project each time the app is updated. Treat it
     like a password.
 
@@ -112,13 +130,17 @@ it along the way. Keep it private: two of them work like passwords.
     You should see a Netlify page about deploying the coach app.
 
 16. If Netlify asks to connect to GitHub, click **Connect to GitHub** and allow it. Netlify makes
-    your own copy of the app's files in your GitHub account. Keep the suggested name or type your
-    own.
+    your own copy of the app's files in your GitHub account. GitHub may list a permission called
+    **Workflow** and, after you click **Authorize**, ask you to confirm it is you (GitHub Mobile, an
+    authenticator app or an emailed code). That is normal. You do not need to grant any
+    organization listed on that page.
 
-17. Netlify shows three boxes. Paste from your note:
-    - **VITE_SUPABASE_URL**: your Supabase URL.
-    - **VITE_SUPABASE_ANON_KEY**: your anon key.
-    - **SUPABASE_ACCESS_TOKEN**: your access token.
+17. Netlify shows a **Repository name** box and three boxes for settings. Keep the suggested
+    repository name or type your own (it must not match a repository you already have). Paste from
+    your note into the three boxes, which are labelled with what they want:
+    - **Supabase Project URL** (VITE_SUPABASE_URL): your Supabase URL.
+    - **Supabase anon public key** (VITE_SUPABASE_ANON_KEY): your anon key.
+    - **Supabase access token** (SUPABASE_ACCESS_TOKEN): your access token.
 
     Paste only the value, with no spaces before or after.
 
@@ -129,15 +151,25 @@ it along the way. Keep it private: two of them work like passwords.
     **SETUP PROBLEM**. It says in plain words which value is wrong. Fix it under
     **Site configuration > Environment variables**, then **Deploys > Trigger deploy > Deploy site**.
 
-19. At the top of the site page, copy your site address into your note under "Site address". It
-    looks like `https://something-random-123.netlify.app`. (You can change it later under
+19. New Netlify sites start **Private**: only you, signed in to Netlify, can open them, and
+    everyone else sees a Netlify log-in page. On the project page, click **Make public**. The box
+    that opens also lets you change the address; keep **Public** selected and click
+    **Make public** again. The project page now says **Public**.
+
+    Copy your site address into your note under "Site address". It looks like
+    `https://something-random-123.netlify.app`. (You can change it later under
     **Site configuration > Change site name**, or add your own domain.)
 
 ## Part 5. Connect sign-in to your site
 
-Sign-in works by email: the app emails a one-time code (6 or 8 digits, depending on your
-project). Supabase needs to know your site address so the emails point to the right place, and
-its emails need one line added so they show the code.
+Sign-in works by email. Supabase needs to know your site address so the emails point to the
+right place.
+
+Supabase's built-in email sender always uses its own standard emails, which hold a **Sign in**
+link and no code. The link works: open it in the same browser where your site is open. Once you
+connect your own email sender (step 27), you can add the code to the emails (steps 22 and 23).
+The code (6 or 8 digits, depending on your project) is what clients need when they use the app
+from their Home Screen.
 
 20. In Supabase, click **Authentication** in the left sidebar, then **URL Configuration**.
     Replace **Site URL** with your site address and click **Save**.
@@ -145,24 +177,29 @@ its emails need one line added so they show the code.
 21. On the same page, under **Redirect URLs**, click **Add URL**, paste your site address followed
     by `/**` (for example `https://something-random-123.netlify.app/**`), and save.
 
-22. Still in Authentication, open **Emails** (it may be called **Email Templates**). Open the
-    **Magic Link** template. In the message body, add this line on its own line, then click
-    **Save**:
+22. **Do this after step 27.** Until your own email sender is connected, Supabase shows "Set up
+    custom SMTP to edit templates" and the template cannot be changed; skip to step 24 and come
+    back. In Authentication, open **Emails** (it may be called **Email Templates**). Open the
+    **Magic link or OTP** template (older screens: **Magic Link**). In the message body, add this
+    line on its own line, then click **Save**:
 
     ```
     <p>Your sign-in code: <strong>{{ .Token }}</strong></p>
     ```
 
-23. Open the **Confirm signup** template and add the same line, then click **Save**. New clients
-    get this email the first time they sign in, so it needs the code too.
+23. **Also after step 27.** Open the **Confirm signup** template and add the same line, then
+    click **Save**. New clients get this email the first time they sign in, so it needs the code
+    too.
 
-    Supabase can take a few minutes to start using the changed text. If the first email in step 24
-    has a link but no code, wait five minutes and send a new code.
+    Supabase can take a few minutes to start using the changed text. If an email still has a link
+    but no code, wait five minutes and send a new code.
 
 ## Part 6. Make yourself the coach
 
-24. Open your site address. You should see the sign-in page. Enter your own email and click
-    **Send sign-in code**. Enter the code from the email and click **Open my account**.
+24. Open your site address and click **Sign in**. Enter your own email and click
+    **Send sign-in code**. Open the email from Supabase and click its **Sign in** link, in the same
+    browser. (If the email shows a code instead, enter it in the app and click
+    **Open my account**.)
 
     Use the same email address as your Supabase account. Until you do step 27, Supabase's built-in
     email sender only emails the people on your Supabase team, and only about two emails an hour.
@@ -201,8 +238,9 @@ its emails need one line added so they show the code.
     From that service, copy its SMTP **host**, **port**, **username** and **password**, and the
     sender address it lets you send from. In Supabase, open **Authentication > Emails > SMTP
     Settings**, turn on **Enable Custom SMTP**, paste those values, set **Sender name** to your
-    business name, and click **Save**. Then send yourself a code from the sign-in page to check
-    it arrives.
+    business name, and click **Save**. Now do steps 22 and 23 (add the code line to the two
+    email templates). Then send yourself a code from the sign-in page to check it arrives with the
+    code in it.
 
     No email sender yet? You can still bring a client in: open the client, click **Read sign-in
     code**, and read them the code on the phone. They enter their email on the sign-in page, tap
