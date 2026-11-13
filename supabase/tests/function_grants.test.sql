@@ -29,7 +29,8 @@ begin
      and p.proname in ('link_client_by_email', 'auth_user_id_by_email', 'auth_clear_password',
                        'custom_access_token_hook', 'onboarding_add_blocker',
                        'onboarding_clear_blockers', 'onboarding_recompute_stage',
-                       'publish_program_draft')
+                       'publish_program_draft', 'provision_coach', 'accept_invite',
+                       'assert_coach_owns_client')
      and has_function_privilege(r, p.oid, 'execute');
   if n > 0 then raise exception 'TEST FAILED: browser role can execute server-only helper: %', names; end if;
   raise notice 'ok 2 - server-only helpers closed to anon and authenticated';
@@ -55,7 +56,8 @@ begin
   raise notice 'ok 4 - browser RPCs still open to authenticated';
 end $$;
 
--- 5. the attack itself: anon calling link_client_by_email is refused.
+-- 5. the attacks themselves: anon linking a client row, a signed-in stranger making
+--    themselves a coach.
 set local role anon;
 do $$
 begin
@@ -63,6 +65,15 @@ begin
   raise exception 'TEST FAILED: anon executed link_client_by_email';
 exception when insufficient_privilege then
   raise notice 'ok 5 - anon refused on link_client_by_email';
+end $$;
+reset role;
+set local role authenticated;
+do $$
+begin
+  perform public.provision_coach('Free coach', 'Stranger');
+  raise exception 'TEST FAILED: authenticated executed provision_coach';
+exception when insufficient_privilege then
+  raise notice 'ok 6 - signed-in stranger refused on provision_coach';
 end $$;
 reset role;
 

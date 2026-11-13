@@ -10,7 +10,11 @@
 --   auth_user_id_by_email(email)          -> look up anyone's account id by email
 --   auth_clear_password(user_id)          -> write auth.users
 --   schedule_client_checkins(client_id)   -> its owner check treats "no user" as the server
--- The original production project allowed only seven SECURITY DEFINER functions to anon.
+--   provision_coach(app_name, name)       -> any signed-in user (with sign-ups on, any stranger)
+--                                            makes themselves a coach with a new tenant
+--   accept_invite(token)                  -> legacy claim with no confirmed-email check
+-- The original project allowed only seven SECURITY DEFINER functions to anon, and closed the
+-- helpers in step 2 to authenticated as well; this file restores that.
 --
 -- 1. anon keeps EXECUTE only on the SECURITY DEFINER functions RLS policies and the signed-out
 --    screens need. Everything else is revoked from PUBLIC and anon; authenticated keeps
@@ -52,6 +56,9 @@ revoke execute on function public.onboarding_add_blocker(uuid, text, text, text)
 revoke execute on function public.onboarding_clear_blockers(uuid, text[])        from public, anon, authenticated;
 revoke execute on function public.onboarding_recompute_stage(uuid)               from public, anon, authenticated;
 revoke execute on function public.publish_program_draft(uuid)            from public, anon, authenticated;
+revoke execute on function public.provision_coach(text, text)            from public, anon, authenticated;
+revoke execute on function public.accept_invite(text)                    from public, anon, authenticated;
+revoke execute on function public.assert_coach_owns_client(uuid)         from public, anon, authenticated;
 
 grant execute on function public.link_client_by_email(uuid, text)  to service_role;
 grant execute on function public.auth_user_id_by_email(text)        to service_role;
@@ -61,3 +68,6 @@ grant execute on function public.onboarding_add_blocker(uuid, text, text, text) 
 grant execute on function public.onboarding_clear_blockers(uuid, text[])        to service_role;
 grant execute on function public.onboarding_recompute_stage(uuid)               to service_role;
 grant execute on function public.publish_program_draft(uuid)        to service_role;
+grant execute on function public.provision_coach(text, text)        to service_role;
+grant execute on function public.accept_invite(text)                to service_role;
+grant execute on function public.assert_coach_owns_client(uuid)     to service_role;
