@@ -4,7 +4,8 @@
 -- anon and authenticated through default privileges, unless a migration takes that back.
 -- The initial schema was rebuilt on plain Postgres, where those default grants do not exist,
 -- so its "REVOKE ... FROM PUBLIC" lines looked sufficient there and are not on Supabase.
--- Measured on a fresh Supabase stack before this file: 33 SECURITY DEFINER functions were
+-- Measured on a fresh Supabase stack before this file: 30 callable SECURITY DEFINER functions
+-- (25 beyond the five policy helpers kept below) were
 -- callable with only the public anon key, among them
 --   link_client_by_email(user_id, email)  -> attach ANY unclaimed client row to any account
 --   auth_user_id_by_email(email)          -> look up anyone's account id by email
