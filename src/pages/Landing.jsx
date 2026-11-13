@@ -73,9 +73,14 @@ export default function Landing() {
           <p className="mt-1 text-sm opacity-70">
             Same login. Enter the emailed code and your coach dashboard opens.
           </p>
-          <Link to="/license" className="btn-ghost mt-3 inline-flex text-sm">
+          <a
+            href="https://github.com/percyhendrux123-prog/coachapp/blob/main/SETUP.md"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn-ghost mt-3 inline-flex text-sm"
+          >
             Coach on your own terms →
-          </Link>
+          </a>
         </div>
       </div>
 
