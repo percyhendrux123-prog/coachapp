@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { checklistLines, isReadyToRelease, offerNoNutrition, releaseOutcomeLine, refusalText, runRelease } from "./releaseChecklist.js";
+import { checklistLines, isReadyToRelease, offerNoNutrition, releaseOutcomeLine, refusalText, runRelease, healthReviewTarget, healthReviewNoteProblem, healthFlagLabel } from "./releaseChecklist.js";
 
 const chk = (o = {}) => ({
   program: { ok: true, state: "draft", detail: "Program draft (5 days)" },
@@ -135,4 +135,35 @@ test("already-claimed client skips the account step and the mail", async () => {
   assert.equal(r.ok, true);
   assert.deepEqual(calls.map((c) => c[0]), ["release"]);
   assert.equal(r.account, "not_needed");
+});
+
+// P26: a flagged screen on a library program could not be released. The panel now offers a
+// review in place, but only when the database names a flagged, unreviewed intake.
+test("P26: review is offered only for a flagged, unreviewed screen the database names", () => {
+  const flagged = chk({ program: { ok: true, state: "live", detail: "Program live" },
+    health: { ok: false, state: "flagged", flags: ["parq_chest_pain", "medications"], intake_id: "i-1", detail: "Health screen flagged" } });
+  assert.deepEqual(healthReviewTarget(flagged), { intakeId: "i-1", flags: ["parq_chest_pain", "medications"] });
+  assert.equal(isReadyToRelease(flagged), false, "offering a review never makes the checklist ready");
+  assert.equal(healthReviewTarget(chk()), null, "clear screen");
+  assert.equal(healthReviewTarget(chk({ health: { ok: true, state: "flagged_reviewed", flags: ["parq_chest_pain"], intake_id: "i-1", detail: "reviewed" } })), null, "already reviewed");
+  assert.equal(healthReviewTarget(chk({ health: { ok: false, state: "no_screen", detail: "No health screen" } })), null, "no screen");
+  assert.equal(healthReviewTarget(chk({ health: { ok: false, state: "unreadable", detail: "unreadable" } })), null, "unreadable");
+  assert.equal(healthReviewTarget(chk({ health: { ok: false, state: "flagged", flags: ["parq_chest_pain"], detail: "older checklist" } })), null, "no intake_id: nothing to review");
+  assert.equal(healthReviewTarget(chk({ health: { ok: false, state: "flagged", flags: [], intake_id: "i-1", detail: "x" } })), null, "no flags");
+  assert.equal(healthReviewTarget(null), null);
+  const reviewed = chk({ program: { ok: true, state: "live", detail: "Program live" },
+    health: { ok: true, state: "flagged_reviewed", flags: ["parq_chest_pain"], intake_id: "i-1", detail: "Health screen flagged, reviewed by coach on 2026-11-12" } });
+  assert.equal(isReadyToRelease(reviewed), true, "a reviewed screen on a live library program is releasable");
+});
+
+test("P26: the review note follows the database rule (3 to 1000 characters, trimmed)", () => {
+  assert.equal(healthReviewNoteProblem(""), "Say what you checked first.");
+  assert.equal(healthReviewNoteProblem("   ok  "), "Say what you checked first.");
+  assert.equal(healthReviewNoteProblem(null), "Say what you checked first.");
+  assert.equal(healthReviewNoteProblem("Talked it through; doctor's note on file"), null);
+  assert.equal(healthReviewNoteProblem("x".repeat(1000)), null);
+  assert.equal(healthReviewNoteProblem("x".repeat(1001)), "Keep the note under 1000 characters.");
+  assert.equal(healthFlagLabel("parq_chest_pain"), "chest pain");
+  assert.equal(healthFlagLabel("medications"), "medications");
+  assert.equal(healthFlagLabel(""), "unnamed flag");
 });

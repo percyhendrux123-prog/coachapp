@@ -83,7 +83,12 @@ where you coach before you use it with real clients (see "What is not included" 
 
 When all answers are **No**, your checklist line turns into **Health screen clear**. If any
 answer is **Yes**, the line reads **Health screen flagged** and **Release** stays off. Speak with
-the client before you go further. This guide does not cover clearing a flagged screen.
+the client before you go further. To clear it, read their answers under **More > Intake**, then
+tap **Review health screen** under the checklist, write what you checked (for example: talked it
+through, a doctor's clearance on file) and tap **I reviewed this screen**. The line changes to
+**Health screen flagged, reviewed by coach** with the date. The app records who reviewed it and
+when. If the client sends a new screen later, it needs a new review. Whether a client is safe to
+train is your judgement and your responsibility; the app only records that you made it.
 
 (**Copy intake link** is a longer form: goal, equipment, training days, experience, body
 measurements, food allergies, plus the same health questions and a signature. It also counts as

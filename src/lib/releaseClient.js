@@ -19,4 +19,12 @@ export async function releaseClient(clientId, { noNutrition = false } = {}) {
   return data;
 }
 
+// P26: record the coach's review of a flagged health screen. The note says what they checked.
+// A refusal arrives as an error whose message starts with "review refused:".
+export async function reviewHealthScreen(intakeId, note) {
+  const { data, error } = await supabase.rpc("review_health_screen", { p_intake_id: intakeId, p_note: note });
+  if (error) throw error;
+  return data;
+}
+
 export { checklistLines, isReadyToRelease, offerNoNutrition, releaseOutcomeLine, refusalText } from "./releaseChecklist.js";

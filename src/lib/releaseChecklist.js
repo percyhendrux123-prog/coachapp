@@ -26,6 +26,33 @@ export function offerNoNutrition(chk) {
   return !!chk && !chk.nutrition?.ok && chk.nutrition?.state === "none";
 }
 
+// P26: a flagged health screen the coach can review in place. Returns { intakeId, flags } only
+// when the database says the screen is flagged and unreviewed and names the intake; anything
+// else (clear, reviewed, no screen, unreadable, an older checklist without intake_id) offers
+// nothing. The database still decides: review_health_screen() refuses a stale or unflagged
+// screen, and release_checklist() honours a review only for the same intake and flags.
+export function healthReviewTarget(chk) {
+  const h = chk?.health;
+  if (!h || h.ok === true || h.state !== "flagged" || !h.intake_id) return null;
+  const flags = Array.isArray(h.flags) ? h.flags.map(String) : [];
+  if (flags.length === 0) return null;
+  return { intakeId: h.intake_id, flags };
+}
+
+// Same rule as review_health_screen(): 3 to 1000 characters after trimming. Returns the
+// problem in words, or null when the note will be accepted.
+export function healthReviewNoteProblem(note) {
+  const n = String(note ?? "").trim().length;
+  if (n < 3) return "Say what you checked first.";
+  if (n > 1000) return "Keep the note under 1000 characters.";
+  return null;
+}
+
+// "parq_chest_pain" -> "chest pain" for the review box. Display only.
+export function healthFlagLabel(flag) {
+  return String(flag ?? "").replace(/^parq_/, "").replace(/_/g, " ").trim() || "unnamed flag";
+}
+
 // One sentence for what the release did.
 export function releaseOutcomeLine(r) {
   if (!r || r.status !== "released") return "Not released.";

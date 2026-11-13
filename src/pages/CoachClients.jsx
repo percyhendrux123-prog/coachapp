@@ -51,8 +51,8 @@ import {
 } from "../components/ClientClassification";
 import { daysOutLabel, prepMissingShowDate, classificationOf, classificationLabel } from "../lib/clientType";
 import { recordActivity } from "../lib/activity";
-import { getReleaseChecklist, releaseClient } from "../lib/releaseClient";
-import { checklistLines, isReadyToRelease, offerNoNutrition, runRelease } from "../lib/releaseChecklist";
+import { getReleaseChecklist, releaseClient, reviewHealthScreen } from "../lib/releaseClient";
+import { checklistLines, isReadyToRelease, offerNoNutrition, runRelease, healthReviewTarget, healthReviewNoteProblem, healthFlagLabel } from "../lib/releaseChecklist";
 import BodyMetricsConfirm from "../components/BodyMetricsConfirm";
 import AppGate from "../components/AppGate";
 
@@ -1933,6 +1933,63 @@ function PingPushButton({ clientId }) {
   );
 }
 
+// P26 — review a flagged health screen in place. Before this, a flagged screen cleared only by
+// approving the held program draft for that intake, and two common paths never have one (the
+// screen + waiver link makes no draft; a library program replaces the empty held draft), so
+// the client could not be released at all. The safety intent stays: nothing is inferred, the
+// coach reads the flags, writes what they checked, and confirms. The database records who and
+// when, and the review counts only for this screen and these flags.
+function HealthScreenReview({ target, onReviewed }) {
+  const [open, setOpen] = useState(false);
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState(null);
+  const problem = healthReviewNoteProblem(note);
+
+  async function confirm() {
+    if (problem) { setErr(problem); return; }
+    setBusy(true); setErr(null);
+    try { await reviewHealthScreen(target.intakeId, note.trim()); setOpen(false); setNote(""); onReviewed?.(); }
+    catch (e) {
+      const m = String(e?.message ?? e);
+      setErr(m.startsWith("review refused: ") ? m.slice("review refused: ".length) : m);
+    }
+    finally { setBusy(false); }
+  }
+
+  if (!open) {
+    return (
+      <button type="button" onClick={() => setOpen(true)}
+        className="mt-1 rounded-md border border-ink/15 px-2 py-0.5 text-xs">
+        Review health screen
+      </button>
+    );
+  }
+  return (
+    <div className="mt-1 max-w-md rounded-md border border-brand/40 bg-brand/5 p-2 text-xs text-ink">
+      <p>
+        Flagged: {target.flags.map(healthFlagLabel).join(", ")}. Read their answers in the Intake
+        tab (under More), then say what you checked before you release.
+      </p>
+      <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} maxLength={1000}
+        aria-label="What you checked"
+        placeholder="What you checked (e.g. talked it through, doctor's clearance on file)"
+        className="mt-1.5 w-full rounded-md border border-ink/15 bg-paper p-1.5 text-xs" />
+      <div className="mt-1.5 flex flex-wrap gap-1.5">
+        <button type="button" onClick={confirm} disabled={busy || !!problem}
+          className="btn-primary px-2.5 py-1 text-xs disabled:opacity-40">
+          {busy ? "Saving…" : "I reviewed this screen"}
+        </button>
+        <button type="button" onClick={() => { setOpen(false); setErr(null); }} disabled={busy}
+          className="btn-ghost px-2.5 py-1 text-xs">
+          Cancel
+        </button>
+      </div>
+      {err && <p className="mt-1 text-danger">{err}</p>}
+    </div>
+  );
+}
+
 // Slice 3 — one Release button with the checklist as it stands (✓ Program draft (5 days) ·
 // ✓ Nutrition (21 meals) · ✓ Email · ✗ Health screen flagged). The database owns every rule:
 // release_checklist() renders, release_client() refuses naming the first missing item and
@@ -1991,6 +2048,9 @@ function ReleasePanel({ client, onReleased }) {
               <span className="mr-1 inline-block w-3 text-center">{l.ok === true ? "✓" : l.ok === false ? "✗" : "?"}</span>{l.label}
             </li>
           ))}
+          {chk && healthReviewTarget(chk) && (
+            <li><HealthScreenReview target={healthReviewTarget(chk)} onReviewed={load} /></li>
+          )}
           {chk && offerNoNutrition(chk) && (
             <li>
               <label className="mt-1 inline-flex items-center gap-2 text-xs">
