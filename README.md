@@ -1,3 +1,7 @@
+<p align="center">
+  <a href="https://deployaxiom.com"><img src=".github/deploy-axiom-lockup.svg" alt="Deploy Axiom™" width="420"></a>
+</p>
+
 # coachapp
 
 A coaching delivery app for personal trainers and online coaches. Clients get one installed
@@ -211,3 +215,7 @@ request to one change with tests, and never commit real client data or secrets. 
 ## License
 
 MIT. See `LICENSE`. Names and marks are not licensed; see `TRADEMARKS.md`.
+
+---
+
+Built by [Deploy Axiom™](https://deployaxiom.com). The code is MIT licensed. The Deploy Axiom name and logo are trademarks of Deploy Axiom LLC and are not covered by the licence; see [TRADEMARKS.md](TRADEMARKS.md).
