@@ -1,4 +1,4 @@
-// Platform-owner view of Self-serve plan buyers (Phase 4, part A). The rows come from
+// Platform-owner view of Self-serve plan users (Phase 4, part A). The rows come from
 // list_system_buyers(), a SECURITY DEFINER reader that refuses anyone who is not a coach of
 // the owner tenant — so a white-label coach calling this gets an error, not an empty list.
 // One action exists: moving a signed-in buyer to coaching (part B, amended 2026-09-04).

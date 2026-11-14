@@ -3,7 +3,10 @@
 // What a Checkout Session carries about where the sale came from. Stripe is mocked — nothing
 // here touches the live account, creates a session, or moves a cent.
 import { sanitizeAttribution, attributionRef, withAttribution, type Attribution } from "./attribution.ts";
-import { SYSTEM_ONE_TIME_PRICE, SYSTEM_CHECKOUT_KIND } from "./pricing.ts";
+// P33: the self-serve plan has no checkout any more. The payment-mode tests below keep
+// covering withAttribution for any one-time session, with fixture values.
+const SYSTEM_ONE_TIME_PRICE = "price_fixture_one_time";
+const SYSTEM_CHECKOUT_KIND = "fixture_one_time";
 import { WHITE_LABEL_LICENSE_PRICE, HOSTING_MONTHLY_PRICE } from "./pricing.ts";
 
 // ---------------------------------------------------------------------------
@@ -26,7 +29,7 @@ function mockStripe() {
   };
 }
 
-// The parameters system-checkout builds, minus attribution — same shape as index.ts.
+// A one-time payment session, minus attribution (the shape the old system-checkout built).
 const systemBaseParams = () => ({
   mode: "payment",
   line_items: [{ price: SYSTEM_ONE_TIME_PRICE, quantity: 1 }],
@@ -118,9 +121,9 @@ Deno.test("the reference string can never exceed Stripe's 200-character limit", 
 });
 
 // ---------------------------------------------------------------------------
-// system-checkout — payment mode, client_reference_id free
+// payment mode (one-time session) — client_reference_id free
 // ---------------------------------------------------------------------------
-Deno.test("system-checkout, untagged visitor: source reads direct and the reference is direct_none_none", async () => {
+Deno.test("payment mode, untagged visitor: source reads direct and the reference is direct_none_none", async () => {
   const stripe = mockStripe();
   const a = sanitizeAttribution({ email: "buyer@example.com" });
   await stripe.checkout.sessions.create(withAttribution(systemBaseParams(), a));
@@ -131,7 +134,7 @@ Deno.test("system-checkout, untagged visitor: source reads direct and the refere
   eq(sent.payment_intent_data.metadata, { src: "direct", med: "none", camp: "none", cnt: "none" }, "charge metadata");
 });
 
-Deno.test("system-checkout, tagged link: all six on the session, the four on the charge", async () => {
+Deno.test("payment mode, tagged link: all six on the session, the four on the charge", async () => {
   const stripe = mockStripe();
   await stripe.checkout.sessions.create(withAttribution(systemBaseParams(), sanitizeAttribution(FULL_BODY)));
   const sent = stripe.calls[0];
@@ -148,18 +151,18 @@ Deno.test("system-checkout, tagged link: all six on the session, the four on the
   }, "payment_intent_data carries the four campaign fields");
 });
 
-Deno.test("system-checkout: existing metadata keys survive — kind and screen_id are untouched", async () => {
+Deno.test("payment mode: existing metadata keys survive — kind and screen_id are untouched", async () => {
   const stripe = mockStripe();
-  // A hostile body trying to overwrite the keys system-provision depends on.
+  // A hostile body trying to overwrite the keys the redeem step depends on.
   const hostile = { ...FULL_BODY, kind: "free", screen_id: "someone-elses-screen" };
   await stripe.checkout.sessions.create(withAttribution(systemBaseParams(), sanitizeAttribution(hostile)));
   const sent = stripe.calls[0];
 
-  eq(sent.metadata.kind, SYSTEM_CHECKOUT_KIND, "self-serve checkout kind is preserved");
+  eq(sent.metadata.kind, SYSTEM_CHECKOUT_KIND, "checkout kind is preserved");
   eq(sent.metadata.screen_id, "screen-123", "screen_id is the row this function inserted");
 });
 
-Deno.test("system-checkout: nothing else about the session changed", async () => {
+Deno.test("payment mode: nothing else about the session changed", async () => {
   const stripe = mockStripe();
   await stripe.checkout.sessions.create(withAttribution(systemBaseParams(), sanitizeAttribution(FULL_BODY)));
   const sent = stripe.calls[0];

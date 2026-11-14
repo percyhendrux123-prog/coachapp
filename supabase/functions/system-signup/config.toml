@@ -1,0 +1,3 @@
+# P33: a stranger signs up; the function owns every check (origin, limits, email-only link).
+[verify_jwt]
+enabled = false

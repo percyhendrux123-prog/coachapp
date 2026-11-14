@@ -32,8 +32,14 @@ Coach console
 
 Platform
 - Multi-tenant with row level security on every table; white-label tenants per coach
-- Optional Stripe flows: coaching checkout, a one-time self-serve plan, white-label licensing with a
-  monthly hosting fee and a notice-then-suspend grace policy
+- A free self-serve plan: a stranger signs up with an email address, gets the intake link by
+  email, and gets a week and targets built from their numbers. No coach and no payment. The
+  health screen is self-report and nobody reviews it: a yes means "check with your doctor first"
+  (the person confirms their own clearance in the app, then a conservative plan is built), and
+  pregnancy or an eating-disorder history never gets a self-serve plan. Signups are limited per
+  address, per network address and per day (`SYSTEM_SIGNUP_DAILY_CAP`, default 50)
+- Optional Stripe flows: coaching checkout, white-label licensing with a monthly hosting fee and a
+  notice-then-suspend grace policy
 - Trainerize export import
 - Scheduled jobs for onboarding reminders, license reconciliation and an owner digest
 
@@ -93,12 +99,12 @@ public key as Bearer and sends the real connector token separately in `x-api-key
 documents migration compatibility for publishable keys at the `verify_jwt` gateway. Its
 [migration guide](https://supabase.com/docs/guides/getting-started/migrating-to-new-api-keys) also
 warns about JWT-only gateways. On a gateway that rejects non-JWT API keys, signed-out calls to
-`intake-submit` (including health-screen links), `license-checkout`, `system-checkout`,
-`system-provision`, `coaching-provision`, and the `/mcp` proxy can fail with `401` / `Invalid JWT`
+`intake-submit` (including health-screen links), `license-checkout`, `coaching-provision`, and
+the `/mcp` proxy can fail with `401` / `Invalid JWT`
 before the handler runs: those functions still deploy with gateway JWT verification. A publishable
 key is not a user JWT and never replaces sign-in or a connector token.
 
-Observed 2026-11-12 on a hosted project: signed-out POSTs to `intake-submit` and `system-checkout`, both deployed
+Observed 2026-11-12 on a hosted project: signed-out POSTs to `intake-submit` and the then-current self-serve checkout, both deployed
 with gateway JWT verification and sent with a publishable key, reached the handler (it answered with its
 own validation error, not `401 Invalid JWT`). Check those paths on your own project before inviting clients. The tests exercise local key
 validation and request headers, not a hosted Supabase gateway. No gateway flags or handler

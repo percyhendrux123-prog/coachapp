@@ -35,8 +35,5 @@ export const tierForPrice = (priceId?: string | null): Tier | null =>
   priceId ? priceMap()[priceId] ?? null : null;
 export const WHITE_LABEL_LICENSE_PRICE = env("STRIPE_PRICE_LICENSE");
 export const HOSTING_MONTHLY_PRICE = env("STRIPE_PRICE_HOSTING");
-export const SYSTEM_ONE_TIME_PRICE = env("STRIPE_PRICE_SELF_SERVE");
-export const SYSTEM_AUTOMATIC_TAX = false;
-export const SYSTEM_CHECKOUT_KIND = "self_serve_plan";
-// Promo codes are honored only when their coupon explicitly permits this product.
-export const SYSTEM_PROMO_ALLOW_KEY = "system_ok";
+// P33: the self-serve plan is a free signup (system-signup). It has no price, tax setting,
+// checkout kind or promo allow-list any more.

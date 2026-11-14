@@ -11,7 +11,7 @@
 //   * The new row is the client's latest intake, so it carries forward any earlier answers
 //     (body metrics, goal, injuries) — a screen must never make the coach's intake view or
 //     the compliance read look emptier than it was.
-import { MEDICATIONS_MAX, PARQ_KEYS } from "../_shared/parq.ts";
+import { MEDICATIONS_MAX, normalizeMedications, PARQ_KEYS } from "../_shared/parq.ts";
 import { computeHealthFlags } from "./mealMacros.ts";
 
 export const SCREEN_KIND = "screen";
@@ -37,7 +37,8 @@ const text = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slic
 export function screenAnswers(a: Answers, nowIso: string): Answers {
   const out: Answers = {};
   for (const k of PARQ_KEYS) out[k] = a[k];
-  const meds = text(a.medications, MEDICATIONS_MAX);
+  // P33: a plain "none" is not a medication; anything else is kept as written.
+  const meds = text(normalizeMedications(a.medications), MEDICATIONS_MAX);
   if (meds) out.medications = meds;
   const inj = text(a.injury_notes, INJURY_NOTES_MAX);
   if (inj) out.injury_notes = inj;

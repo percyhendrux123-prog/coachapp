@@ -9,8 +9,9 @@
 
 import {
   missingBodyMetrics as sharedMissingBodyMetrics, computeMacros as sharedComputeMacros,
-  missingParq, computeHealthFlags,
+  missingParq, computeHealthFlags, WEEKLY_LOSS_BANDS,
 } from "./mealMacros.ts";
+import { classifyFlags } from "../_shared/parq.ts";
 
 // Re-exported: intake-submit/index.ts imports missingParq from this file, not
 // directly from mealMacros.ts.
@@ -311,6 +312,12 @@ export function generatePlan(i: Intake) {
     };
   }
 
+  return buildPlan(i, health_flags);
+}
+
+// The plan itself, once every gate above has passed. Shared by generatePlan and
+// generateConservativePlan so the two can never build a week differently.
+function buildPlan(i: Intake, health_flags: string[], rationalePrefix: string[] = []) {
   const injuries = (i.injuries || []).filter((x) => x && x !== "none");
   const subs: string[] = [];
   const { freq, note: freqNote } = resolveTrainingFrequency(i);
@@ -358,6 +365,7 @@ export function generatePlan(i: Intake) {
 
   const trainingLabels = split.map((s: any) => s[0]).join(", ");
   const rationale = [
+    ...rationalePrefix,
     `Goal: ${goal}. Week structure: ${trainingCount} training + ${restCount} rest (${trainingLabels}). Experience: ${i.experience || "beginner"}. Equipment: ${i.equipment || "full_gym"}.`,
     freqNote,
     "Movement selection biases basic patterns (squat/hinge/press/pull/carry-core) — simplicity increases consistency even for advanced lifters.",
@@ -377,4 +385,50 @@ export function generatePlan(i: Intake) {
     substitutions: subs,
     frequency: { training_days: trainingCount, rest_days: restCount },
   };
+}
+
+// ---------- Self-serve: conservative plan after the person's own confirmation (P33) ----------
+// Used only by system-clearance, after attest_my_health_screen() accepted the signed-in
+// person's statement that their own doctor or licensed health professional cleared them.
+// No new training science: three knobs the generator already has, each named below and in the
+// rationale, so the plan says what was done.
+export const CONSERVATIVE = {
+  experience: "beginner",                       // whatever was entered
+  max_training_days: 4,                         // lifting days capped at 4
+  fat_loss_weekly_lb: WEEKLY_LOSS_BANDS.lifestyle.min, // smallest deficit the generator has (0.5 lb/wk)
+} as const;
+export const CONSERVATIVE_RATIONALE =
+  "Conservative start. Built after you confirmed your own doctor's clearance. Nobody reviewed your health answers.";
+
+export function conservativeProfile(i: Intake): Intake {
+  const days = Number(i.days_per_week);
+  const goal = String(i.goal ?? "").toLowerCase();
+  const out: Intake = {
+    ...i,
+    experience: CONSERVATIVE.experience,
+    days_per_week: Number.isFinite(days) ? Math.min(days, CONSERVATIVE.max_training_days) : CONSERVATIVE.max_training_days,
+    client_class: "lifestyle",
+  };
+  if (goal === "fat_loss") out.weekly_loss_lb = CONSERVATIVE.fat_loss_weekly_lb;
+  else delete out.weekly_loss_lb;
+  return out;
+}
+
+// Refuses (throws) unless the screen's flags are exactly the ones the person confirmed and
+// none of them is blocking. The database already refused anything else; this is the second
+// lock, so a caller bug can never build past a blocking flag.
+export function generateConservativePlan(i: Intake, attestedFlags: string[]) {
+  const health_flags = computeHealthFlags(i);
+  if (health_flags.length === 0) throw new Error("conservative plan refused: this screen has no flags");
+  if (JSON.stringify([...health_flags].sort()) !== JSON.stringify([...(attestedFlags ?? [])].map(String).sort())) {
+    throw new Error("conservative plan refused: the screen's flags are not the ones that were confirmed");
+  }
+  if (classifyFlags(health_flags).blocking.length > 0) {
+    throw new Error("conservative plan refused: a flag on this screen never gets a self-serve plan");
+  }
+  const profile = conservativeProfile(i);
+  const missing = missingBodyMetrics(profile);
+  if (missing.length > 0) throw new Error("conservative plan refused: missing body metrics: " + missing.join(", "));
+  const plan = buildPlan(profile, health_flags, [CONSERVATIVE_RATIONALE]);
+  return { ...plan, conservative: true };
 }

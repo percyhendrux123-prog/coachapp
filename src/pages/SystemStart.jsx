@@ -1,78 +1,70 @@
 import { useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link } from "react-router-dom";
 import AppGate from "../components/AppGate";
-import YesNo from "../components/YesNo";
-import { COACHING_APPLICATION_URL } from "../lib/systemMode";
-import { SCREEN_QUESTIONS, startSystemCheckout } from "../lib/system";
+import { startSystemSignup } from "../lib/system";
 
-// SELF-SERVE PLAN pre-pay screen: email + the eight health questions + medications. The
-// server decides clear/flagged; this page only refuses to submit an incomplete screen.
-// A flagged screen is never charged — the calm card below is the whole outcome.
+// SELF-SERVE PLAN signup (P33: free). Email only. The health screen is asked once, inside the
+// intake the email links to. The page says the same thing for a new address and one that
+// already has a plan, because the server does.
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const FIELD = "w-full rounded-xl border border-ink/15 px-3 py-2.5 text-sm";
 
 export default function SystemStart() {
   const [email, setEmail] = useState("");
-  const [answers, setAnswers] = useState({});
-  const [medications, setMedications] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
-  const [flagged, setFlagged] = useState(false);
-  // Hidden promo path for internal walkthroughs: /system/start?code=… — no field on the page.
-  const [params] = useSearchParams();
-  const promo = (params.get("code") || "").trim();
+  const [state, setState] = useState("form"); // form | sent | paused
 
-  const complete = EMAIL_RE.test(email.trim()) && SCREEN_QUESTIONS.every(([k]) => answers[k] === true || answers[k] === false);
+  const complete = EMAIL_RE.test(email.trim());
 
   async function submit(e) {
     e.preventDefault();
     if (!complete || busy) return;
     setErr(null); setBusy(true);
     try {
-      const r = await startSystemCheckout({ email: email.trim(), answers: { ...answers, medications }, promo });
-      if (r?.flagged) { setFlagged(true); return; }
-      if (r?.checkout_url) { window.location.assign(r.checkout_url); return; }
-      throw new Error("no checkout link returned");
+      const r = await startSystemSignup({ email: email.trim() });
+      if (r?.paused) { setState("paused"); return; }
+      if (r?.ok) { setState("sent"); return; }
+      throw new Error("Something went wrong. Try again in a few minutes.");
     } catch (ex) { setErr(ex.message); }
     finally { setBusy(false); }
   }
 
-  if (flagged) {
-    return (
-      <AppGate kicker="SELF-SERVE PLAN" title="Not this one. Coaching instead." actionTo="/system" actionLabel="Back">
-        Something on your health screen means a self-serve plan is the wrong tool. You have not been charged.
-        {COACHING_APPLICATION_URL ? (
-          <a className="btn-ghost mt-4 inline-flex min-h-[44px] items-center" href={COACHING_APPLICATION_URL}>Apply for coaching</a>
-        ) : null}
-      </AppGate>
-    );
-  }
+  if (state === "sent") return <SignupSent />;
+  if (state === "paused") return <SignupPaused />;
 
   return (
     <main className="mx-auto max-w-md px-5 py-12 md:py-16">
       <span className="kicker">SELF-SERVE PLAN</span>
-      <h1 className="display mt-2 text-3xl">Health screen first.</h1>
-      <p className="mt-3 text-sm opacity-80">Eight questions. Honest answers. A yes on any of them means this is not the right tool for you, and you are not charged.</p>
+      <h1 className="display mt-2 text-3xl">Start with your email.</h1>
+      <p className="mt-3 text-sm opacity-80">We email you a link to a short intake: a health screen, your numbers, your training days. Your week and your targets are built from what you enter.</p>
       <form onSubmit={submit} className="mt-6">
         <label className="mb-1 block text-sm font-medium" htmlFor="system-email">Email</label>
         <input id="system-email" type="email" autoComplete="email" inputMode="email" required className={FIELD}
           value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
-        <p className="mt-1 text-xs opacity-50">Your receipt, your intake link, and your sign-in all use this address.</p>
-        <div className="mt-6">
-          {SCREEN_QUESTIONS.map(([k, label]) => (
-            <YesNo key={k} label={label} value={answers[k]} onChange={(v) => setAnswers((a) => ({ ...a, [k]: v }))} />
-          ))}
-        </div>
-        <label className="mb-1 mt-5 block text-sm font-medium" htmlFor="system-meds">Medications</label>
-        <input id="system-meds" type="text" className={FIELD} maxLength={400} value={medications}
-          onChange={(e) => setMedications(e.target.value)} placeholder="Leave blank if none" />
+        <p className="mt-1 text-xs opacity-50">Your intake link and your sign-in both use this address.</p>
         {err && <p className="mt-3 text-xs text-danger">{err}</p>}
         <button type="submit" disabled={!complete || busy} className="btn-primary mt-6 block w-full py-3 text-center text-base disabled:opacity-40">
-          {busy ? "One moment…" : "Continue to payment"}
+          {busy ? "One moment…" : "Email me my link"}
         </button>
-        <p className="mt-3 text-xs opacity-50">Payment is handled by Stripe.</p>
       </form>
       <p className="mt-8 text-xs opacity-50"><Link to="/system" className="underline">Back</Link></p>
     </main>
+  );
+}
+
+export function SignupSent() {
+  return (
+    <AppGate kicker="SELF-SERVE PLAN" title="Check your email." actionTo="/system" actionLabel="Back">
+      If that address can get a plan, a link is on its way. It can take a minute; check spam if it is not there. One email per address per day.
+    </AppGate>
+  );
+}
+
+export function SignupPaused() {
+  return (
+    <AppGate kicker="SELF-SERVE PLAN" title="Signups are paused for today." actionTo="/system" actionLabel="Back">
+      This app has reached its daily limit for new signups. Try again tomorrow.
+    </AppGate>
   );
 }

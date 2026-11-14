@@ -110,10 +110,10 @@ test('webhook sender and links use neutral defaults and explicit env overrides',
 
 test('checkout and provisioning refuse missing price configuration before network work', async () => {
   const overrides = {
-    allowedOrigins: () => ['localhost'], SYSTEM_ONE_TIME_PRICE: '',
-    HOSTING_MONTHLY_PRICE: '', SYSTEM_CHECKOUT_KIND: 'self_serve_plan',
+    allowedOrigins: () => ['localhost'], HOSTING_MONTHLY_PRICE: '',
   };
-  for (const name of ['system-checkout', 'system-provision', 'license-checkout']) {
+  // P33: system-checkout and system-provision are gone (the self-serve plan is free).
+  for (const name of ['license-checkout']) {
     const { handler } = load(name, overrides);
     const response = await handler(post({ session_id: 'cs_fixture', email: 'buyer@example.com' }));
     assert.equal(response.status, 503, name);

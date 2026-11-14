@@ -3,7 +3,8 @@
 // A coach invites a client (createIntakeInvite), which creates an intake_forms row with a token
 // scoped to the coach's tenant. The client opens /intake?token=… and submits answers here; we
 // generate a plan and land a Pending program draft for the coach's approval. Health-flag
-// (held_medical) routing is unchanged.
+// (held_medical) routing is unchanged for coached tenants. Self-serve tenants (P33): a flagged
+// screen returns needs_clearance or blocked_health and builds nothing — see ./healthOutcome.ts.
 //
 // REMOVED: the former self-serve-PAID mode (verify a Stripe Checkout session → create a coaching
 // client). Coach↔client payments no longer run through this platform's Stripe account — coaches
@@ -11,6 +12,8 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { generatePlan, missingParq } from "./generate.ts";
 import { buildScreenRecord, SCREEN_KIND, screenProblems } from "./screen.ts";
+import { blockedBody, coachedHeldBody, needsClearanceBody, selfServeHealthOutcome } from "./healthOutcome.ts";
+import { insertDraft, publishSelfServe } from "../_shared/selfServeBuild.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -117,18 +120,39 @@ async function processSubmission(intake: any, answers: any): Promise<Response> {
     if (cErr) console.error("intake-submit: client metrics write failed:", cErr.message);
   }
 
+  // P33 — self-serve and flagged: nobody here reviews a health answer. The intake is already
+  // stored as submitted with its flags (the record stays true). Blocking flags build nothing,
+  // not even a held draft; doctor-first flags keep the held draft (the owner view counts it)
+  // and wait for the signed-in person's own confirmation (system-clearance).
+  if (mode === "self_serve") {
+    const health = selfServeHealthOutcome(plan.health_flags);
+    if (health) {
+      const log = async (template: string, snap: Record<string, unknown>) => {
+        const { error } = await admin.from("notification_log").insert({
+          tenant_id: intake.tenant_id, client_id: intake.client_id, channel: "push",
+          template, status: "recorded", consent_snapshot: snap,
+        });
+        if (error) console.error("intake-submit notify: notification_log insert failed:", error.message);
+      };
+      if (health.status === "blocked_health") {
+        await log("system_blocked_health", { intake_id: intake.id, reason: health.reason });
+        return json(blockedBody(intake.id, health.reason));
+      }
+      const held = await insertDraft(admin, intake, plan, "held_medical", false);
+      if (!held.ok) return json({ error: "draft insert: " + held.error }, 500);
+      await log("system_clearance_hold", { intake_id: intake.id, draft_id: held.draft.id });
+      return json(needsClearanceBody(intake.id, held.draft.id, plan.health_flags));
+    }
+  }
+
   const { data: cfg } = await admin.from("tenant_config").select("program_approval_gate")
     .eq("tenant_id", intake.tenant_id).maybeSingle();
   const gate = cfg?.program_approval_gate ?? true;
   const status = plan.held ? "held_medical" : "draft";
 
-  const ins = await admin.from("program_drafts").insert({
-    tenant_id: intake.tenant_id, client_id: intake.client_id, intake_id: intake.id,
-    status, training: plan.training, meal_plan: plan.meal_plan, macros: plan.macros,
-    rationale: plan.rationale, health_flags: plan.health_flags, gate_enabled: gate,
-  }).select("*").single();
-  if (ins.error) return json({ error: "draft insert: " + ins.error.message }, 500);
-  const draft = ins.data;
+  const ins = await insertDraft(admin, intake, plan, status, gate);
+  if (!ins.ok) return json({ error: "draft insert: " + ins.error }, 500);
+  const draft = ins.draft;
 
   // Best-effort — never blocks the submission response on failure, but the failure
   // itself must be visible, not swallowed.
@@ -141,26 +165,19 @@ async function processSubmission(intake: any, answers: any): Promise<Response> {
   };
 
   if (plan.held) {
+    // Coached tenants only (self-serve flags returned above): unchanged since P26.
     await notify("program_medical_hold");
-    return json({ status: "held_medical", draft_id: draft.id, health_flags: plan.health_flags, mode,
-      message: mode === "self_serve"
-        ? "Health-screen flag raised — no self-serve plan built. Coaching is the right next step."
-        : "Health-screen flag raised — held for coach review. No plan auto-generated." });
+    return json({ ...coachedHeldBody(draft.id, plan.health_flags), mode });
   }
   if (gate === false) {
-    const { data: pid, error } = await admin.rpc("publish_program_draft", { p_draft_id: draft.id });
-    if (error) return json({ error: "publish: " + error.message, draft_id: draft.id }, 500);
-
     // Self-serve tenants have no coach to press Release, so nutrition is assembled and
-    // assigned here, in the same request as the program publish. Coached tenants with the
-    // gate off (none today) are left exactly as before — a coach still releases nutrition.
-    let meal_plan_id: string | null = null;
-    let meal_plan_error: string | null = null;
-    if (mode === "self_serve") {
-      const { data: mp, error: mpErr } = await admin.rpc("assemble_client_meal_plan_system", { p_client_id: intake.client_id });
-      if (mpErr) meal_plan_error = mpErr.message; else meal_plan_id = mp as string;
-    }
-    return json({ status: "published", draft_id: draft.id, program_id: pid, gate: false, mode, meal_plan_id, meal_plan_error });
+    // assigned here, in the same request as the program publish (_shared/selfServeBuild.ts).
+    // Coached tenants with the gate off (none today) are left exactly as before — a coach
+    // still releases nutrition.
+    const built = await publishSelfServe(admin, intake.client_id, draft.id, mode === "self_serve");
+    if (!built.ok) return json({ error: "publish: " + built.error, draft_id: draft.id }, 500);
+    return json({ status: "published", draft_id: draft.id, program_id: built.program_id, gate: false, mode,
+      meal_plan_id: built.meal_plan_id, meal_plan_error: built.meal_plan_error });
   }
   await notify("program_draft_pending_approval");
   return json({ status: "draft_pending_approval", draft_id: draft.id, gate: true,

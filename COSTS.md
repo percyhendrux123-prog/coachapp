@@ -84,6 +84,16 @@ the limits (100,000 monthly active users, 8 GB database, 250 GB egress, 100 GB f
 daily backups kept for 7 days, email support). Pro has a spend cap on by default, so it does not
 bill past the plan unless you turn the cap off.
 
+## The free self-serve signup
+
+`/system` lets anyone sign up with an email address, with no payment in front of it. Each signup
+can cost you: one email sent through your email sender, one sign-in account in Supabase (counted
+in the monthly active users above once they sign in), and a few rows in the database. The app
+limits what a stranger can make it do: one email per address per 24 hours, 5 tries an hour from
+one network address, and a daily cap on signup emails, `SYSTEM_SIGNUP_DAILY_CAP` (default **50**).
+Over the cap, the page says signups are paused until the next day. Check your email sender's
+free allowance before you raise the cap; set it to `0` to pause signups.
+
 ## Stripe (optional: taking payments in the app)
 
 Pricing page: https://stripe.com/pricing

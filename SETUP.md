@@ -298,6 +298,13 @@ You can add these any time. Each one is separate.
   ```
 
   The same two values also turn on push alerts to the coach when a client sends a message.
+- **The free self-serve plan** (`/system`). Anyone can sign up with an email address; the intake
+  link goes out by email only. It needs the email sender above (`RESEND_API_KEY`, and optionally
+  `SYSTEM_EMAIL_FROM` and `SYSTEM_EMAIL_SIGNATURE`) and a tenant with the slug `self-serve` whose
+  mode is `self_serve`. No Stripe is needed for it. Two server functions run it: `system-signup`
+  (deploy it with JWT verification off; its `config.toml` says so) and `system-clearance` (JWT
+  verification on). `SYSTEM_SIGNUP_DAILY_CAP` in **Edge Functions > Secrets** caps the signup
+  emails sent in any 24 hours (default 50; `0` pauses signups). Read COSTS.md before you raise it.
 - **Payments with Stripe.** Create your products and prices in Stripe, then set the
   `STRIPE_*` settings listed in `.env.example` in Supabase **Edge Functions > Secrets**, and add a
   Stripe webhook for `checkout.session.completed` pointing at

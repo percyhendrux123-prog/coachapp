@@ -79,3 +79,22 @@ Deno.test("parity: console (src/lib/systemStuck.js) and digest agree on every ca
   ];
   for (const c of cases) assertEquals(spa.stuckReasons(c, NOW), stuckReasons(c, NOW), JSON.stringify(c));
 });
+
+// P33: a person held by their own health screen is never a stuck delivery, in both twins.
+import { healthHoldLine } from "./systemStuck.ts";
+Deno.test("held rows are never in the stuck list (TS and JS)", () => {
+  for (const hold of ["needs_clearance", "blocked"]) {
+    const r = { ...base, health_hold: hold };
+    assertEquals(stuckReasons(r, NOW), [], `TS ${hold}`);
+    assertEquals(spa.stuckReasons(r, NOW), [], `JS ${hold}`);
+  }
+  const none = { ...base, health_hold: "none" };
+  assertEquals(stuckReasons(none, NOW), spa.stuckReasons(none, NOW), "none: twins agree");
+  assertEquals(stuckReasons(none, NOW).length > 0, true, "none still reports missing deliveries");
+});
+Deno.test("W11: one counts-only line, no names", () => {
+  const rows = [{ ...base, health_hold: "needs_clearance" }, { ...base, health_hold: "needs_clearance" }, { ...base, health_hold: "blocked" }, { ...base, health_hold: "none" }];
+  assertEquals(healthHoldLine(rows), "Self-serve plan: 2 waiting on their own doctor, 1 not eligible. No action for you.", "line");
+  assertEquals(healthHoldLine([{ ...base, health_hold: "none" }]), null, "nobody held");
+  if (/Sam|Rivera|example/.test(healthHoldLine(rows) ?? "")) throw new Error("a name in the counts line");
+});

@@ -85,6 +85,16 @@ export function missingParq(i) {
   return PARQ_FIELDS.filter((f) => i[f] == null);
 }
 
+// Twin of normalizeMedications in supabase/functions/_shared/parq.ts (healthHold.parity.test.ts).
+const MEDICATIONS_NONE_WORDS = ["none", "no", "n/a", "na", "nil", "nothing", "-"];
+export function normalizeMedications(text) {
+  const t = typeof text === "string" ? text.trim() : "";
+  if (!t) return "";
+  const key = t.toLowerCase().replace(/[\s.,;:!?'"()]+/g, "");
+  if (MEDICATIONS_NONE_WORDS.includes(key)) return "";
+  return t;
+}
+
 export function computeHealthFlags(i) {
   const f = [];
   if (i.parq_heart_condition) f.push("parq_heart_condition");
@@ -95,7 +105,8 @@ export function computeHealthFlags(i) {
   if (i.parq_other_reason) f.push("parq_other_reason_not_to_exercise");
   if (i.pregnant) f.push("pregnancy");
   if (i.eating_disorder_history) f.push("eating_disorder_history");
-  if (i.medications && i.medications.trim().length > 0) f.push("medication_disclosed");
+  // P33: a plain "none" / "n/a" typed into "leave blank if none" is not a disclosure.
+  if (normalizeMedications(i.medications).length > 0) f.push("medication_disclosed");
   return f;
 }
 

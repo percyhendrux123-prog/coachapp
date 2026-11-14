@@ -27,3 +27,36 @@ Deno.test("stored answers carry only the screen keys, medications capped, never 
   eq((out.medications as string).length, 400, "capped");
   eq("email" in out, false, "no stray fields");
 });
+
+// ---------- P33: the self-serve flag table and "none" in the medications field ----------
+import { BLOCKING_FLAGS, blockedReason, classifyFlags, DOCTOR_FIRST_FLAGS, normalizeMedications } from "./parq.ts";
+
+Deno.test("each known flag lands in the right group", () => {
+  for (const f of DOCTOR_FIRST_FLAGS) eq(classifyFlags([f]), { blocking: [], doctor_first: [f] }, f);
+  for (const f of BLOCKING_FLAGS) eq(classifyFlags([f]), { blocking: [f], doctor_first: [] }, f);
+});
+Deno.test("a mixed screen keeps both groups; the blocking reason wins", () => {
+  const c = classifyFlags(["parq_chest_pain", "pregnancy", "medication_disclosed"]);
+  eq(c, { blocking: ["pregnancy"], doctor_first: ["parq_chest_pain", "medication_disclosed"] }, "mixed");
+  eq(blockedReason(["parq_chest_pain", "pregnancy"]), "pregnancy", "pregnancy reason");
+  eq(blockedReason(["pregnancy", "eating_disorder_history"]), "eating_disorder_history", "one message: eating-disorder text");
+  eq(blockedReason(["parq_chest_pain"]), null, "doctor-first only is not blocked");
+});
+Deno.test("an unknown flag id is blocking (fail closed)", () => {
+  eq(classifyFlags(["parq_something_new"]), { blocking: ["parq_something_new"], doctor_first: [] }, "unknown");
+  eq(blockedReason(["parq_something_new"]), "other", "reason other");
+  // The raw answer keys are not stored flag ids: they are unknown here, so they block.
+  eq(classifyFlags(["parq_bone_joint"]).blocking, ["parq_bone_joint"], "raw key is not a stored id");
+});
+Deno.test("normalizeMedications: plain none words are blank", () => {
+  for (const t of ["none", " N/A ", "No.", "na", "nil", "Nothing", "-", "  ", ""]) eq(normalizeMedications(t), "", JSON.stringify(t));
+});
+Deno.test("normalizeMedications: anything else is kept as written", () => {
+  eq(normalizeMedications("none, just lisinopril"), "none, just lisinopril", "kept");
+  eq(normalizeMedications("0.5mg x"), "0.5mg x", "kept");
+  eq(normalizeMedications(" metformin "), "metformin", "trimmed only");
+  eq(normalizeMedications(null), "", "null");
+});
+Deno.test("screenOutcome: 'none' in medications is not a flag", () => {
+  eq(screenOutcome({ ...allNo, medications: "None." }), { ok: true, flags: [] }, "clear");
+});

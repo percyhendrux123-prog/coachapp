@@ -425,7 +425,7 @@ function ClientDetail({ client, tenantId, onChanged, onRemoved, initialTab, onDe
         {client.origin === "system" && (
           <>
             <span>·</span>
-            <span title="Bought Self-serve plan first; moved to coaching on this date">
+            <span title="Started on the Self-serve plan; moved to coaching on this date">
               From Self-serve plan{client.converted_from_client_id && client.joined_at ? ` · moved to coaching ${new Date(client.joined_at).toLocaleDateString()}` : ""}
             </span>
           </>
@@ -2518,7 +2518,7 @@ function LoadFail({ children }) {
   );
 }
 
-// Phase 4 part A — who bought Self-serve plan (owner only; the parent gates on isOwnerTenant).
+// Phase 4 part A — who started the Self-serve plan (owner only; the parent gates on isOwnerTenant).
 // Three states, three renderings: loading, failed read, and a real empty list.
 function SystemBuyersSection({ onConverted }) {
   const [rows, setRows] = useState(undefined);
@@ -2535,15 +2535,21 @@ function SystemBuyersSection({ onConverted }) {
   const stuckNote = (r) => {
     const missing = stuckReasons(r);
     return missing.length > 0
-      ? <p className="mt-1 text-xs text-danger">Stuck: paid and submitted intake, no {missing.join(", ")}.</p>
-      : null;
+      ? <p className="mt-1 text-xs text-danger">Stuck: submitted intake, no {missing.join(", ")}.</p>
+      : healthHoldNote(r);
   };
+  // P33: a health hold is a fact about the person, not a task — nobody here reviews it.
+  const healthHoldNote = (r) => (r.health_hold === "needs_clearance"
+    ? <p className="mt-1 text-xs opacity-60">Waiting on their own doctor. No action for you.</p>
+    : r.health_hold === "blocked"
+      ? <p className="mt-1 text-xs opacity-60">Not eligible for the self-serve plan. No action for you.</p>
+      : null);
   const yesNo = (v) => (v ? "Yes" : "No");
   const day = (v) => (v ? new Date(v).toLocaleDateString() : "—");
   const aiLabel = (r) => (r.ai_connected ? (r.ai_scope === "owner" ? "Full control" : "Read-only") : "No");
 
   async function move(r) {
-    const name = r.display_name || r.email_masked || "this buyer";
+    const name = r.display_name || r.email_masked || "this user";
     const ok = window.confirm(
       `Move ${name} to coaching?\n\n` +
       "A client row is created on your roster with their numbers copied. Their sign-in moves with them — " +
@@ -2583,18 +2589,18 @@ function SystemBuyersSection({ onConverted }) {
         className="flex w-full items-center justify-between text-left min-h-[44px]">
         <span>
           <span className="kicker">SELF-SERVE PLAN</span>
-          <span className="display mt-1 block text-xl">Buyers</span>
+          <span className="display mt-1 block text-xl">Users</span>
         </span>
         <span className="text-xs">
           {stuckCount > 0 && <span className="mr-2 font-medium text-danger">{stuckCount} stuck</span>}
           <span className="opacity-60">{open ? "Hide" : "Show"}</span>
         </span>
       </button>
-      {open && failed && <p className="mt-3 text-sm text-danger">Could not read the buyer list: {failed}</p>}
+      {open && failed && <p className="mt-3 text-sm text-danger">Could not read the user list: {failed}</p>}
       {open && !failed && rows === undefined && <p className="mt-3 text-sm opacity-60">Loading…</p>}
       {open && note && <p className="mt-3 text-sm" role="status">{note}</p>}
       {open && !failed && Array.isArray(rows) && rows.length === 0 && (
-        <p className="mt-3 text-sm opacity-70">No Self-serve plan buyers yet.</p>
+        <p className="mt-3 text-sm opacity-70">No Self-serve plan users yet.</p>
       )}
       {/* Narrow screens: one card per buyer so all fields remain visible
           without horizontal scrolling. */}
@@ -2623,7 +2629,7 @@ function SystemBuyersSection({ onConverted }) {
           <table className="w-full text-sm">
             <thead className="text-left text-xs uppercase tracking-wide opacity-60">
               <tr>
-                <th className="py-2 pr-3">Buyer</th><th className="py-2 pr-3">Joined</th><th className="py-2 pr-3">Intake</th>
+                <th className="py-2 pr-3">User</th><th className="py-2 pr-3">Joined</th><th className="py-2 pr-3">Intake</th>
                 <th className="py-2 pr-3">Program</th><th className="py-2 pr-3">Meal plan</th><th className="py-2 pr-3">AI</th>
                 <th className="py-2 pr-3">Last seen</th><th className="py-2">Coaching</th>
               </tr>

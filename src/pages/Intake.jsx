@@ -3,13 +3,15 @@ import { useSearchParams, Link } from "react-router-dom";
 import { submitIntake } from "../lib/intake";
 import AppGate from "../components/AppGate";
 import YesNo from "../components/YesNo";
-import { COACHING_APPLICATION_URL, copyFor } from "../lib/systemMode";
+import { copyFor } from "../lib/systemMode";
+import { flagItems } from "../lib/healthHold";
+import { W4, W8_REMINDER, blockedCopy } from "../content/healthHoldCopy";
 import { LEGAL_DOCS, LEGAL_VERSION, legalAcceptancePayload } from "../content/legalPack";
 import { inToCm, lbToKg } from "../lib/intakeUnits";
 import { PARQ_QUESTIONS } from "../content/parqQuestions";
 
 // Consultation / onboarding intake. Public: ?token=… (coach invite, or a self-serve plan
-// buyer's token from system-provision). The old ?session_id= mode is gone (server dropped
+// signup's token, emailed by system-signup). The old ?session_id= mode is gone (server dropped
 // it 2026-07-22).
 // Body metrics + legal acceptance are required so the plan generator never invents sex/height/weight.
 
@@ -70,7 +72,8 @@ export default function Intake() {
         Answer honestly. There are no wrong answers.
       </p>
       <p className="mt-2 text-xs opacity-55">
-        This is fitness coaching, not medical care. See the legal section before you submit.
+        {mode === "self_serve" ? "This is fitness structure, not medical care." : "This is fitness coaching, not medical care."}{" "}
+        See the legal section before you submit.
       </p>
       <IntakeForm
         busy={busy} err={err} mode={mode}
@@ -259,7 +262,7 @@ function IntakeForm({ onSubmit, busy, err, mode = "coached" }) {
           <YesNo key={key} label={label} value={a.parq[key]} onChange={(v) => setParq(key, v)} />
         ))}
         <Text label={copyFor(mode, "intake_meds_label")} value={a.medications} onChange={(v) => set("medications", v)}
-          placeholder="Medications, conditions, doctor guidance — leave blank if nothing"
+          placeholder={mode === "self_serve" ? "" : "Medications, conditions, doctor guidance — leave blank if nothing"}
           hint={copyFor(mode, "intake_meds_hint")} />
       </Section>
 
@@ -385,17 +388,43 @@ function Text({ label, value, onChange, placeholder, rows = 2, hint }) {
 }
 
 function Result({ r }) {
-  const held = r.status === "held_medical";
   const selfServe = r.mode === "self_serve" || r.self_serve === true;
+  // P33: the self-serve health outcomes. Nobody here reviews a health answer; the screens say
+  // the true next step and end with Sign in. Coached outcomes below are unchanged.
+  if (selfServe && r.status === "needs_clearance") {
+    return (
+      <main className="mx-auto max-w-2xl px-5 py-16" data-intake-result="needs_clearance">
+        <span className="kicker">{W4.kicker}</span>
+        <h1 className="display mt-2 text-3xl">{W4.title}</h1>
+        <p className="mt-3 max-w-lg text-sm opacity-80">{W4.lead}</p>
+        <ul className="mt-2 max-w-lg list-disc space-y-1 pl-5 text-sm">
+          {flagItems(r.health_flags).map((it) => <li key={it}>{it}</li>)}
+        </ul>
+        {W4.body.map((p) => <p key={p} className="mt-3 max-w-lg text-sm opacity-80">{p}</p>)}
+        <p className="mt-4 text-xs opacity-50">{W8_REMINDER}</p>
+        <Link to="/login" className="btn-primary mt-6 inline-flex">Sign in</Link>
+      </main>
+    );
+  }
+  if (selfServe && r.status === "blocked_health") {
+    const c = blockedCopy(r.reason);
+    return (
+      <main className="mx-auto max-w-2xl px-5 py-16" data-intake-result="blocked_health">
+        <span className="kicker">{c.kicker}</span>
+        <h1 className="display mt-2 text-3xl">{c.title}</h1>
+        {c.body.map((p) => <p key={p} className="mt-3 max-w-lg text-sm opacity-80">{p}</p>)}
+        <p className="mt-4 text-xs opacity-50">{W8_REMINDER}</p>
+        <Link to="/login" className="btn-primary mt-6 inline-flex">Sign in</Link>
+      </main>
+    );
+  }
+
+  const held = r.status === "held_medical";
   const published = r.status === "published";
   const kicker = held ? "Held for review" : published ? "Built" : "Received";
-  const title = held
-    ? (selfServe ? "Not this one. Coaching instead." : "Your coach is on it.")
-    : published ? "Your week is built." : "Intake received.";
+  const title = held ? "Your coach is on it." : published ? "Your week is built." : "Intake received.";
   const body = held
-    ? (selfServe
-      ? "Because of what you shared on the health screen, a self-serve plan was not built. You have not been charged again. Coaching is the right next step."
-      : "Because of what you shared on the health screen, your coach will review personally before any program is built. Expect direct contact — that is deliberate, not delay.")
+    ? "Because of what you shared on the health screen, your coach will review personally before any program is built. Expect direct contact — that is deliberate, not delay."
     : published
       ? "Sign in with the email you used and open Program."
       : "Your coach is reviewing your details and building structure. You’ll hear from them soon.";
@@ -405,14 +434,13 @@ function Result({ r }) {
       <h1 className="display mt-2 text-3xl">{title}</h1>
       <p className="mt-3 max-w-lg text-sm opacity-80">{body}</p>
       {published && r.meal_plan_error && (
-        <p className="mt-3 max-w-lg text-sm text-danger">Nutrition did not build: {r.meal_plan_error}. Your program is ready; reply to your receipt email and nutrition gets added.</p>
+        <p className="mt-3 max-w-lg text-sm text-danger">
+          Nutrition did not build: {r.meal_plan_error}.{" "}
+          {selfServe ? "Your program is ready. Open Settings → Update my numbers to rebuild it." : "Your program is ready; your coach adds nutrition."}
+        </p>
       )}
-      <p className="mt-4 text-xs opacity-50">
-        Reminder: this is not medical care. If symptoms arise, stop and contact a clinician.
-      </p>
-      {held && selfServe && COACHING_APPLICATION_URL
-        ? <a href={COACHING_APPLICATION_URL} className="btn-primary mt-6 inline-flex">Apply for coaching</a>
-        : <Link to="/login" className="btn-primary mt-6 inline-flex">Sign in</Link>}
+      <p className="mt-4 text-xs opacity-50">{W8_REMINDER}</p>
+      <Link to="/login" className="btn-primary mt-6 inline-flex">Sign in</Link>
     </main>
   );
 }

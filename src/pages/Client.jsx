@@ -41,6 +41,7 @@ import ClientBrief from "../components/ClientBrief";
 import CommunityHub from "../components/CommunityHub";
 import FirstRun from "../components/FirstRun";
 import StandardCard from "../components/StandardCard";
+import HealthHold from "../components/HealthHold";
 import { paymentUrlWithCoupon } from "../lib/settings";
 import { disablePush, enablePush, pushSupport, supportMessage } from "../lib/push";
 import { readOutcome } from "../lib/readOutcome";
@@ -165,6 +166,8 @@ export default function Client() {
   // ProgramTab's own card may already have refreshed to the new one.
   const [scheduleVersion, setScheduleVersion] = useState(0);
   const bumpScheduleVersion = useCallback(() => setScheduleVersion((v) => v + 1), []);
+  // P33: bumped when a conservative plan is built from the health hold, so Program re-reads.
+  const [programVersion, setProgramVersion] = useState(0);
 
   const resetTabForAccountTransition = useCallback(() => {
     setTab("program");
@@ -464,7 +467,9 @@ export default function Client() {
         )}
         {tab === "program" && (
           <div id="client-program" className="scroll-mt-24">
-            <ProgramTab key={`${ctx.tenantId}:${ctx.clientId}`} ctx={ctx} onOpenHistory={() => go("history")} onScheduleAdjusted={bumpScheduleVersion} mode={mode} messagingOn={messagingOn} />
+            {/* P33: a flagged self-serve health screen. Shown above the program, which is left as it is. */}
+            {isSelfServeMode(mode) && <HealthHold key={`hold:${ctx.clientId}`} onBuilt={() => setProgramVersion((v) => v + 1)} />}
+            <ProgramTab key={`${ctx.tenantId}:${ctx.clientId}:${programVersion}`} ctx={ctx} onOpenHistory={() => go("history")} onScheduleAdjusted={bumpScheduleVersion} mode={mode} messagingOn={messagingOn} />
           </div>
         )}
         {tab === "nutrition" && (

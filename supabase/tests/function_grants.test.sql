@@ -30,7 +30,8 @@ begin
                        'custom_access_token_hook', 'onboarding_add_blocker',
                        'onboarding_clear_blockers', 'onboarding_recompute_stage',
                        'publish_program_draft', 'provision_coach', 'accept_invite',
-                       'assert_coach_owns_client')
+                       'assert_coach_owns_client', 'system_signup_gate', 'provision_system_signup',
+                       'mint_intake_token_for_client')
      and has_function_privilege(r, p.oid, 'execute');
   if n > 0 then raise exception 'TEST FAILED: browser role can execute server-only helper: %', names; end if;
   raise notice 'ok 2 - server-only helpers closed to anon and authenticated';
@@ -48,7 +49,8 @@ begin
                       'send_coach_message', 'mark_thread_read', 'release_client',
                       'release_checklist', 'rm_coach_overview', 'coach_inbox',
                       'approve_program_draft', 'adjust_my_schedule', 'mint_my_intake_token',
-                      'confirm_client_body_metrics', 'set_brief_slide_order', 'get_app_config']) f
+                      'confirm_client_body_metrics', 'set_brief_slide_order', 'get_app_config',
+                      'attest_my_health_screen', 'my_health_hold']) f
    where not exists (select 1 from pg_proc p join pg_namespace s on s.oid = p.pronamespace
                       where s.nspname = 'public' and p.proname = f
                         and has_function_privilege('authenticated', p.oid, 'execute'));

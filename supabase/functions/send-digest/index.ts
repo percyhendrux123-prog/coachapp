@@ -13,7 +13,7 @@ import { requireOwnerTenant } from "./policy.ts";
 import { OWNER_TENANT_SLUG } from "../_shared/owner.ts";
 import webpush from "npm:web-push@3.6.7";
 import { type CoachDigest, coachDigestLine, coachDigestPush } from "../_shared/onboardingReminders.ts";
-import { type SystemBuyerRow, stuckLine, stuckSystemBuyers } from "../_shared/systemStuck.ts";
+import { healthHoldLine, type SystemBuyerRow, stuckLine, stuckSystemBuyers } from "../_shared/systemStuck.ts";
 
 const RESEND_API = "https://api.resend.com/emails";
 const RESEND_KEY = Deno.env.get("RESEND_API_KEY") || "";
@@ -63,20 +63,24 @@ async function onboardingSection(db: ReturnType<typeof admin>, tenantId: string)
   return { html, pushed, line };
 }
 
-// Self-serve buyers who paid and submitted intake 24h+ ago but still lack a plan
-// or sign-in. This alert is owner-only: it must not notify other tenants.
-// A read failure is shown in the email, never swallowed.
+// Self-serve users who submitted intake 24h+ ago but still lack a plan or sign-in. This alert
+// is owner-only: it must not notify other tenants. A read failure is shown in the email, never
+// swallowed. People held by their health screen (P33) are not in the stuck list: they get one
+// separate counts-only line (W11), because nobody here acts on a health answer.
 async function systemStuckSection(db: ReturnType<typeof admin>, tenantId: string): Promise<{ html: string; stuck: number; pushed: number }> {
   const { data, error } = await db.rpc("list_system_buyers");
-  if (error) return { html: `<p style="color:#b00">Self-serve buyer check could not run: ${escapeHtml(error.message)}</p>`, stuck: 0, pushed: 0 };
-  const stuck = stuckSystemBuyers((data ?? []) as SystemBuyerRow[]);
-  if (stuck.length === 0) return { html: `<p style="color:#555">Self-serve buyers stuck after intake: none.</p>`, stuck: 0, pushed: 0 };
+  if (error) return { html: `<p style="color:#b00">Self-serve user check could not run: ${escapeHtml(error.message)}</p>`, stuck: 0, pushed: 0 };
+  const rows = (data ?? []) as SystemBuyerRow[];
+  const holdLine = healthHoldLine(rows);
+  const holdHtml = holdLine ? `<p style="color:#555;margin:8px 0 0">${escapeHtml(holdLine)}</p>` : "";
+  const stuck = stuckSystemBuyers(rows);
+  if (stuck.length === 0) return { html: `<p style="color:#555">Self-serve users stuck after intake: none.</p>${holdHtml}`, stuck: 0, pushed: 0 };
 
   let pushed = 0;
   if (VAPID_PRIVATE) {
     const tpl = {
-      title: "Self-serve buyer stuck",
-      body: stuck.length === 1 ? stuckLine(stuck[0]) : `${stuck.length} Self-serve buyers paid and submitted intake but have no plan or sign-in.`,
+      title: "Self-serve user stuck",
+      body: stuck.length === 1 ? stuckLine(stuck[0]) : `${stuck.length} Self-serve users submitted intake but have no plan or sign-in.`,
       url: "/coach/clients",
     };
     const { data: subs } = await db.from("coach_push_subscriptions").select("id, subscription").eq("tenant_id", tenantId).is("revoked_at", null);
@@ -92,10 +96,10 @@ async function systemStuckSection(db: ReturnType<typeof admin>, tenantId: string
   }
 
   const items = stuck.map((s) => `<li>${escapeHtml(stuckLine(s))}</li>`).join("");
-  const html = `<p style="color:#b00;font-weight:600;margin:0 0 4px">Self-serve buyers stuck after intake (${stuck.length})</p>
-    <p style="color:#111;margin:0 0 4px">They paid and submitted the intake 24+ hours ago. Nothing reaches them until this is fixed.</p>
+  const html = `<p style="color:#b00;font-weight:600;margin:0 0 4px">Self-serve users stuck after intake (${stuck.length})</p>
+    <p style="color:#111;margin:0 0 4px">They submitted the intake 24+ hours ago. Nothing reaches them until this is fixed.</p>
     <ul style="color:#111;margin:0 0 4px;padding-left:18px">${items}</ul>
-    <p style="color:#555;margin:0"><a href="${escapeHtml(APP_ORIGIN)}/coach/clients">Open Clients → Self-serve buyers</a>. A buyer who never signed in cannot be moved; add them as a client and send an intake.</p>`;
+    <p style="color:#555;margin:0"><a href="${escapeHtml(APP_ORIGIN)}/coach/clients">Open Clients → Self-serve users</a>. A user who never signed in cannot be moved; add them as a client and send an intake.</p>${holdHtml}`;
   return { html, stuck: stuck.length, pushed };
 }
 

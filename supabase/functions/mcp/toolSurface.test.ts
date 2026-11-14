@@ -215,3 +215,19 @@ Deno.test("exactly the coach-relay tools are marked needsCoach (hidden on self-s
   assert(/\.filter\(\(t\) => !hiddenWithoutCoach\(ctx\.selfServe, t\.needsCoach\)\)/.test(source), "tools/list must apply hiddenWithoutCoach");
   assert(/if \(hiddenWithoutCoach\(ctx\.selfServe, tool\.needsCoach\)\)/.test(source), "tools/call must refuse via hiddenWithoutCoach");
 });
+
+// P33: no AI path can confirm a health screen.
+Deno.test("no client or coach tool can attest or clear a health screen", () => {
+  const names = [...source.matchAll(/\bname: "([a-z_]+)"/g)].map((m) => m[1]);
+  assert(names.length > 20, "tool names were read");
+  const bad = names.filter((n) => /attest|clearance/.test(n));
+  assert(bad.length === 0, `tool names that could clear a screen: ${bad.join(", ")}`);
+  assert(!/attest_my_health_screen|system-clearance/.test(source), "the connector never calls the attestation RPC or system-clearance");
+});
+Deno.test("regenerate_my_plan returns W9 for a held or not-eligible screen, with no ids", () => {
+  const start = source.indexOf('name: "regenerate_my_plan"');
+  const body = source.slice(start, source.indexOf("\n  },\n", start));
+  assert(/needs_clearance/.test(body) && /blocked_health/.test(body), "both held statuses handled");
+  assert(/return \{ status: out\.status, message: W9_TEXT \}/.test(body), "held result is status + W9 only");
+  assert(!/points to coaching/.test(body), "description no longer routes a health flag to coaching");
+});

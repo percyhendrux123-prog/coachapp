@@ -2,11 +2,14 @@
 // self-serve twin here. A buyer must never read "your coach hasn't…" — there is no coach, and
 // the product says so instead of letting them discover it (spec §4).
 import { isSelfServeMode } from "./clientTabs.js";
+import { W2_PARQ_NOTE, W3_MEDS_HINT, W3_MEDS_LABEL } from "../content/healthHoldCopy.js";
 
 // Optional booking link. An empty value hides coaching application links.
 export const COACHING_APPLICATION_URL = import.meta.env?.VITE_COACHING_APPLICATION_URL?.trim() || "";
 
-export const STANDARD_LINE = "SYSTEM gives you the structure. It won't hold you to it. That's coaching.";
+// P33: the third sentence ("That's coaching.") is dropped — the self-serve plan does not sell
+// coaching, and the brand mark is not carried in the open copy.
+export const STANDARD_LINE = "The self-serve plan gives you the structure. It won't hold you to it.";
 
 // General nutrition education notice for self-serve users.
 export const NUTRITION_SCOPE_LINE =
@@ -14,22 +17,22 @@ export const NUTRITION_SCOPE_LINE =
 
 export const COPY = {
   // Intake page (pre-submit). The page cannot know the tenant before submit, so the SYSTEM
-  // links carry `&system=1` (system-provision, Update-my-numbers). Coached copy is unchanged.
+  // links carry `&system=1` (system-signup email, Update-my-numbers). Coached copy is unchanged.
   intake_intro: {
     coached: "One-time intake so your coach can build structure around your life — about 8–10 minutes.",
     self_serve: "One-time intake. Your week and your targets are built from what you enter — about 8–10 minutes.",
   },
   intake_parq_note: {
     coached: "Yes answers raise a coach review hold before any plan is auto-built.",
-    self_serve: "A yes here holds your plan for review instead of building it.",
+    self_serve: W2_PARQ_NOTE, // P33 W2
   },
   intake_meds_label: {
     coached: "Anything medical your coach should know?",
-    self_serve: "Anything medical we should know?",
+    self_serve: W3_MEDS_LABEL, // P33 W3
   },
   intake_meds_hint: {
     coached: "Non-empty notes also trigger personal coach review before programming.",
-    self_serve: "Non-empty notes also hold your plan for review before it is built.",
+    self_serve: W3_MEDS_HINT, // P33 W3
   },
   intake_legal_footer: {
     coached: "Questions: contact your coach.",

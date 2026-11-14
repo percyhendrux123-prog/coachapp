@@ -1,13 +1,14 @@
 import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { STANDARD_LINE } from "../lib/systemMode";
+import { W1_FOOTER } from "../content/healthHoldCopy";
 
 // Self-serve plan landing with one action.
 export default function System() {
   // Tab title + share preview belong to this page, not the tenant shell. Restored on leave.
   useEffect(() => {
     const prev = document.title;
-    document.title = "Self-serve plan — a week built from your numbers.";
+    document.title = "Self-serve plan — a week built from your numbers. Free.";
     return () => { document.title = prev; };
   }, []);
 
@@ -24,10 +25,10 @@ export default function System() {
         <li>Rest timer, last-time ghost text, day swaps, progress trends.</li>
         <li>Optional: connect your own AI and let it rewrite your plan by talking to it.</li>
       </ul>
-      <p className="mt-6 text-sm font-semibold">Review your plan price at checkout.</p>
-      <Link to="/system/start" className="btn-primary mt-6 block py-3 text-center text-base">Start the health screen</Link>
+      <p className="mt-6 text-sm font-semibold">Free. Open source.</p>
+      <Link to="/system/start" className="btn-primary mt-6 block py-3 text-center text-base">Start with your email</Link>
       <p className="mt-8 border-t border-ink/10 pt-5 text-sm opacity-70">{STANDARD_LINE}</p>
-      <p className="mt-6 text-xs opacity-50">This is fitness structure, not medical care. Anyone with a flagged health screen is not charged and is pointed to coaching instead.</p>
+      <p className="mt-6 text-xs opacity-50">{W1_FOOTER}</p>
     </main>
   );
 }

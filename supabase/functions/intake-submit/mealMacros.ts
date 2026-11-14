@@ -10,6 +10,8 @@
 // validation but simpler, less capable macro math. Nothing here is a downgrade from
 // either — the merge keeps the richer math AND the safety gates.
 
+import { normalizeMedications } from "../_shared/parq.ts";
+
 export type MacroInputs = {
   sex?: string;
   age?: number;
@@ -100,7 +102,8 @@ export function computeHealthFlags(i: Record<string, unknown>): string[] {
   if (i.parq_other_reason) f.push("parq_other_reason_not_to_exercise");
   if (i.pregnant) f.push("pregnancy");
   if (i.eating_disorder_history) f.push("eating_disorder_history");
-  if (i.medications && String(i.medications).trim().length > 0) f.push("medication_disclosed");
+  // P33: a plain "none" / "n/a" typed into "leave blank if none" is not a disclosure.
+  if (normalizeMedications(i.medications).length > 0) f.push("medication_disclosed");
   return f;
 }
 

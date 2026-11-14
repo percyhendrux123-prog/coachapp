@@ -22,6 +22,7 @@
 //
 // Protocol: JSON-RPC over POST (initialize / ping / tools/list / tools/call;
 // notifications → 202). GET/DELETE → 405 (no SSE stream; stateless mode).
+import { W9_TEXT } from "../intake-submit/healthOutcome.ts";
 import { admin, CORS, SUPABASE_URL, SERVICE_KEY } from "../_shared/challenge.ts";
 import { OWNER_TENANT_SLUG } from "../_shared/owner.ts";
 import { closeDayCore } from "../_shared/workoutDay.ts";
@@ -684,9 +685,10 @@ const COACH_TOOLS: Tool[] = [
   {
     name: "list_system_buyers",
     description:
-      "Every Self-serve plan buyer (self-serve tenants) with intake / program / meal-plan / AI-connection state and a " +
-      "masked email. Restricted to the platform owner tenant; any other caller is refused. Read-only; there is no " +
-      "action on a buyer from here.",
+      "Every Self-serve plan user (self-serve tenants) with intake / program / meal-plan / AI-connection state, " +
+      "health_hold (none | needs_clearance | blocked: a fact about the person, not a task — nobody here reviews " +
+      "health answers) and a masked email. Restricted to the platform owner tenant; any other caller is refused. " +
+      "Read-only; there is no action on a user from here.",
     inputSchema: obj(),
     run: async (ctx) => {
       await requireOwnerTenant(ctx);
@@ -3830,7 +3832,7 @@ const CLIENT_TOOLS: Tool[] = [
   },
   {
     name: "regenerate_my_plan",
-    description: "Rebuild YOUR week and targets from new inputs. Re-asks the health screen: every PAR-Q answer must be given again; any yes holds the plan and points to coaching. Allowed once every 28 days. Self-serve owner tokens only.",
+    description: "Rebuild YOUR week and targets from new inputs. Re-asks the health screen: every PAR-Q answer must be given again; any yes stops the build and the person finishes the health step in the app themselves (an assistant cannot answer the health screen or confirm clearance). Allowed once every 28 days after a plan was built. Self-serve owner tokens only.",
     inputSchema: obj({
       answers: { type: "object", description: "Full intake answers: sex, age, height_cm, weight_kg, goal, days_per_week, equipment, experience, unit_pref, height_raw, weight_raw, injuries, plus every PAR-Q key (parq_heart_condition, parq_chest_pain, parq_dizziness, parq_bone_joint, parq_bp_meds, parq_other_reason, pregnant, eating_disorder_history) and optional medications." },
     }, ["answers"]),
@@ -3849,7 +3851,12 @@ const CLIENT_TOOLS: Tool[] = [
       });
       const out = await res.json().catch(() => ({}));
       if (!res.ok) throw new ToolError(out?.error || `intake-submit ${res.status}`);
-      return out; // { status: published|held_medical, program_id?, meal_plan_id?, meal_plan_error?, health_flags? }
+      // P33: a flagged screen builds nothing. The assistant gets the status and W9, never an id
+      // or a path it could use to confirm anything; the person does that in the app.
+      if (out?.status === "needs_clearance" || out?.status === "blocked_health") {
+        return { status: out.status, message: W9_TEXT };
+      }
+      return out; // { status: published, program_id?, meal_plan_id?, meal_plan_error? }
     },
   },
 ];

@@ -1,0 +1,3 @@
+# P33: a signed-in person only. The gateway checks the JWT; flow.ts refuses non-user tokens.
+[verify_jwt]
+enabled = true
