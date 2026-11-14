@@ -16827,6 +16827,16 @@ returns text language sql immutable set search_path = public as $$
   end
 $$;
 
+-- Constants only, but locked like every other new function (20261112190000): not for anon.
+revoke all on function public.self_serve_doctor_first_flags() from public, anon;
+revoke all on function public.self_serve_blocking_flags() from public, anon;
+revoke all on function public.health_statement_version() from public, anon;
+revoke all on function public.health_statement_text(text) from public, anon;
+grant execute on function public.self_serve_doctor_first_flags() to authenticated, service_role;
+grant execute on function public.self_serve_blocking_flags() to authenticated, service_role;
+grant execute on function public.health_statement_version() to authenticated, service_role;
+grant execute on function public.health_statement_text(text) to authenticated, service_role;
+
 -- ── 2. Attestations ─────────────────────────────────────────────────────────────────────
 create table if not exists public.health_screen_attestations (
   id                uuid primary key default gen_random_uuid(),
@@ -17244,7 +17254,8 @@ reset row_security;
 --   1. system_signup_attempts: one row per attempt (hashes, decision, time).
 --   2. system_signup_sources: where a new signup came from (the six attribution fields that
 --      used to ride on the Stripe session), one row per client.
---   3. system_signup_gate(): the three limits, serialized under one advisory lock.
+--   3. system_signup_gate(): the three limits, serialized under one advisory lock. Rows older
+--      than 7 days are deleted on every call.
 --   4. provision_system_signup(): one client per email in the self-serve tenant; reuses an
 --      unexpired pending intake token, else mints one (14 days). A person who already
 --      submitted an intake gets no new token here (kind = existing): the email tells them to
@@ -17297,19 +17308,29 @@ begin
     raise exception 'system_signup_gate: hashes required';
   end if;
   perform pg_advisory_xact_lock(hashtext('system_signup_gate'));
+  -- Nothing older than 7 days is ever needed for the limits; hashes are not kept longer.
+  delete from public.system_signup_attempts where created_at < now() - interval '7 days';
 
+  -- Order matters for the answer: the cap is checked before "already sent to this address",
+  -- so while signups are paused every address gets the same paused answer (review round 1).
   if (select count(*) from public.system_signup_attempts
        where ip_hash = p_ip_hash and created_at > now() - interval '1 hour') >= 5 then
     v_decision := 'ip_limited';
+  elsif (select count(*) from public.system_signup_attempts
+          where decision in ('ok', 'sent') and created_at > now() - interval '24 hours') >= v_cap then
+    v_decision := 'paused';
   elsif exists (select 1 from public.system_signup_attempts
                  where email_hash = p_email_hash and decision in ('ok', 'sent')
                    and created_at > now() - interval '24 hours') then
     v_decision := 'email_recent';
-  elsif (select count(*) from public.system_signup_attempts
-          where decision in ('ok', 'sent') and created_at > now() - interval '24 hours') >= v_cap then
-    v_decision := 'paused';
   else
     v_decision := 'ok';
+  end if;
+
+  -- A repeat from a network address that is already over its limit is not stored again.
+  if v_decision = 'ip_limited' and (select count(*) from public.system_signup_attempts
+       where ip_hash = p_ip_hash and decision = 'ip_limited' and created_at > now() - interval '1 hour') >= 1 then
+    return jsonb_build_object('decision', v_decision, 'attempt_id', null);
   end if;
 
   insert into public.system_signup_attempts (email_hash, ip_hash, decision)

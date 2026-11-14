@@ -10,11 +10,11 @@
 export const DEFAULT_DAILY_CAP = 50;
 export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-// Same allow-list rule the old checkout used. localhost is for local runs only.
-export function safeOrigin(origin: string, allowed: string[]): string | null {
+// Same allow-list rule the old checkout used. localhost only when the app itself runs locally.
+export function safeOrigin(origin: string, allowed: string[], allowLocal = false): string | null {
   try {
     const u = new URL(origin);
-    if (u.hostname === "localhost" || u.hostname === "127.0.0.1") return u.origin;
+    if (u.hostname === "localhost" || u.hostname === "127.0.0.1") return allowLocal ? u.origin : null;
     return allowed.some((d) => u.hostname === d || u.hostname.endsWith("." + d)) ? u.origin : null;
   } catch { return null; }
 }
@@ -30,12 +30,29 @@ export function normalizeEmail(raw: unknown): string | null {
   return EMAIL_RE.test(e) && e.length <= 254 ? e : null;
 }
 
-// The caller's network address as the platform reports it. A missing header falls into one
-// shared bucket, so it is limited too.
+// The caller's network address. Review round 1: the LEFTMOST x-forwarded-for entry is whatever
+// the caller sent, so it is never used. Order: cf-connecting-ip (set by the edge network, not
+// by the caller), x-real-ip, then the RIGHTMOST x-forwarded-for entry (the one the platform
+// appended). A missing header falls into one shared bucket, so it is limited too. Check on your
+// own host which header carries the real address before relying on the per-IP limit.
 export function clientIp(headers: Headers): string {
-  const xff = headers.get("x-forwarded-for") || "";
-  const first = xff.split(",")[0]?.trim();
-  return first || headers.get("cf-connecting-ip") || headers.get("x-real-ip") || "unknown";
+  const cf = headers.get("cf-connecting-ip")?.trim();
+  if (cf) return cf;
+  const real = headers.get("x-real-ip")?.trim();
+  if (real) return real;
+  const parts = (headers.get("x-forwarded-for") || "").split(",").map((s) => s.trim()).filter(Boolean);
+  return parts.length ? parts[parts.length - 1] : "unknown";
+}
+
+// The key the one-email-per-address limit counts by: "+tags" are dropped and, for Gmail,
+// dots too, so aliases of one mailbox share one limit. Only the hash input changes; the email
+// is still sent to the address exactly as typed.
+export function limitKey(email: string): string {
+  const [local, domain] = [email.slice(0, email.lastIndexOf("@")), email.slice(email.lastIndexOf("@") + 1)];
+  let l = local.split("+")[0];
+  const d = domain === "googlemail.com" ? "gmail.com" : domain;
+  if (d === "gmail.com") l = l.replace(/\./g, "");
+  return `${l}@${d}`;
 }
 
 export async function keyedHash(key: string, value: string): Promise<string> {
@@ -68,7 +85,7 @@ export async function runSignup(deps: Deps, input: { email: unknown; ip: string;
   if (!email) return { status: 400, body: { error: "a valid email is required" } };
 
   let gate: Gate;
-  try { gate = await deps.gate(await deps.hash("email:" + email), await deps.hash("ip:" + input.ip), input.cap); }
+  try { gate = await deps.gate(await deps.hash("email:" + limitKey(email)), await deps.hash("ip:" + input.ip), input.cap); }
   catch { return { status: 503, body: { error: "Signup is unavailable right now. Try again later." } }; }
   if (gate.decision === "ip_limited") return { status: 429, body: { error: "Too many tries from here. Try again in an hour." } };
   if (gate.decision === "paused") return { status: 200, body: { paused: true } };

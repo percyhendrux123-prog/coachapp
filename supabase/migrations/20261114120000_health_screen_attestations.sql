@@ -57,6 +57,16 @@ returns text language sql immutable set search_path = public as $$
   end
 $$;
 
+-- Constants only, but locked like every other new function (20261112190000): not for anon.
+revoke all on function public.self_serve_doctor_first_flags() from public, anon;
+revoke all on function public.self_serve_blocking_flags() from public, anon;
+revoke all on function public.health_statement_version() from public, anon;
+revoke all on function public.health_statement_text(text) from public, anon;
+grant execute on function public.self_serve_doctor_first_flags() to authenticated, service_role;
+grant execute on function public.self_serve_blocking_flags() to authenticated, service_role;
+grant execute on function public.health_statement_version() to authenticated, service_role;
+grant execute on function public.health_statement_text(text) to authenticated, service_role;
+
 -- ── 2. Attestations ─────────────────────────────────────────────────────────────────────
 create table if not exists public.health_screen_attestations (
   id                uuid primary key default gen_random_uuid(),

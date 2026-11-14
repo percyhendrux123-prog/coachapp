@@ -16,7 +16,8 @@ import { buildSelfServe } from "../_shared/selfServeBuild.ts";
 import { checkCaller, parseInput, runClearance, type Deps } from "./flow.ts";
 
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") || "";
-const STALE_CLAIM_MS = 2 * 60 * 1000;
+// Longer than any edge-function run, so a takeover never races a build still in flight.
+const STALE_CLAIM_MS = 10 * 60 * 1000;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
@@ -68,7 +69,7 @@ Deno.serve(async (req) => {
     claim: async (attestationId, intakeId) => {
       const ins = await db.from("health_clearance_builds").insert({ attestation_id: attestationId, intake_id: intakeId });
       if (!ins.error) return "claimed";
-      // A claim left by a build that crashed (no draft after two minutes) is taken over.
+      // A claim left by a build that crashed (no draft after ten minutes) is taken over.
       const { data: c } = await db.from("health_clearance_builds").select("claimed_at, draft_id")
         .eq("attestation_id", attestationId).maybeSingle();
       if (c && !c.draft_id && Date.now() - Date.parse(c.claimed_at) > STALE_CLAIM_MS) {
@@ -83,6 +84,11 @@ Deno.serve(async (req) => {
       await db.from("health_clearance_builds").delete().eq("attestation_id", attestationId).is("draft_id", null);
     },
     build: async (intake, plan) => {
+      // The screen must still be the person's latest when the plan is published (review round 1).
+      const { data: latest } = await db.from("intake_forms").select("id")
+        .eq("client_id", intake.client_id).eq("tenant_id", intake.tenant_id).eq("status", "submitted")
+        .order("submitted_at", { ascending: false, nullsFirst: false }).order("created_at", { ascending: false }).limit(1);
+      if (latest?.[0]?.id !== intake.id) return { ok: false, error: "a newer health screen exists — open the app again" };
       const r = await buildSelfServe(db, intake, plan);
       if (!r.ok) return { ok: false, error: r.error };
       return { ok: true, built: { draft_id: r.draft_id, program_id: r.program_id, meal_plan_id: r.meal_plan_id, meal_plan_error: r.meal_plan_error } };

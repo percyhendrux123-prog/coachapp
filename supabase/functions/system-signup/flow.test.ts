@@ -1,5 +1,5 @@
 // Run: deno test --allow-read supabase/functions/system-signup/flow.test.ts
-import { clientIp, keyedHash, parseCap, runSignup, safeOrigin, type Deps, type Gate } from "./flow.ts";
+import { clientIp, keyedHash, limitKey, parseCap, runSignup, safeOrigin, type Deps, type Gate } from "./flow.ts";
 
 const eq = (a: unknown, b: unknown, m: string) => { if (JSON.stringify(a) !== JSON.stringify(b)) throw new Error(`${m}: ${JSON.stringify(a)} != ${JSON.stringify(b)}`); };
 
@@ -17,7 +17,7 @@ function world(opts: { existing?: string[]; cap?: number; sendFails?: boolean } 
       const inHourIp = attempts.filter((a) => a.ip === ih).length;
       const recent = attempts.some((a) => a.e === eh && (a.d === "ok" || a.d === "sent"));
       const day = attempts.filter((a) => a.d === "ok" || a.d === "sent").length;
-      const d: Gate["decision"] = inHourIp >= 5 ? "ip_limited" : recent ? "email_recent" : day >= cap ? "paused" : "ok";
+      const d: Gate["decision"] = inHourIp >= 5 ? "ip_limited" : day >= cap ? "paused" : recent ? "email_recent" : "ok";
       const id = "att-" + (++n);
       attempts.push({ e: eh, ip: ih, d, id });
       return { decision: d, attempt_id: id };
@@ -91,6 +91,8 @@ Deno.test("bad input and origins", async () => {
   eq(safeOrigin("https://x.app.example.com", ["app.example.com"]), "https://x.app.example.com", "subdomain");
   eq(safeOrigin("https://app.example.com.evil.net", ["app.example.com"]), null, "suffix trick refused");
   eq(safeOrigin("", ["app.example.com"]), null, "no origin");
+  eq(safeOrigin("http://localhost:5173", ["app.example.com"]), null, "localhost refused when the app is not local");
+  eq(safeOrigin("http://localhost:5173", ["app.example.com"], true), "http://localhost:5173", "localhost for a local app");
 });
 Deno.test("gate failure fails closed", async () => {
   const w = world();
@@ -100,6 +102,22 @@ Deno.test("gate failure fails closed", async () => {
 });
 Deno.test("cap parsing and IP reading", () => {
   eq([parseCap(undefined), parseCap(""), parseCap("12"), parseCap("0"), parseCap("-1"), parseCap("abc"), parseCap("2.5")], [50, 50, 12, 0, 50, 50, 50], "cap");
-  eq(clientIp(new Headers({ "x-forwarded-for": "7.7.7.7, 10.0.0.1" })), "7.7.7.7", "first hop");
+  eq(clientIp(new Headers({ "x-forwarded-for": "7.7.7.7, 10.0.0.1" })), "10.0.0.1", "rightmost: the hop the platform appended");
+  eq(clientIp(new Headers({ "x-forwarded-for": "6.6.6.6, 10.0.0.1" })), clientIp(new Headers({ "x-forwarded-for": "7.7.7.7, 10.0.0.1" })), "a spoofed leading value does not change the bucket");
+  eq(clientIp(new Headers({ "cf-connecting-ip": "8.8.8.8", "x-forwarded-for": "1.2.3.4, 8.8.8.8" })), "8.8.8.8", "edge header wins");
   eq(clientIp(new Headers()), "unknown", "shared bucket");
+});
+
+Deno.test("aliases of one mailbox share the one-email-a-day limit", async () => {
+  eq([limitKey("a.b+x@gmail.com"), limitKey("ab@googlemail.com"), limitKey("a.b+y@example.com")], ["ab@gmail.com", "ab@gmail.com", "a.b@example.com"], "keys");
+  const w = world();
+  await call(w, "sam+1@example.com", "1.0.0.1");
+  eq(await call(w, "sam+2@example.com", "1.0.0.2"), { status: 200, body: { ok: true } }, "same answer");
+  eq(w.sent.length, 1, "one email for the mailbox");
+  eq(w.sent[0].to, "sam+1@example.com", "sent to the address as typed");
+});
+Deno.test("while paused, an address that signed up today gets the same paused answer", async () => {
+  const w = world();
+  await call(w, "r@example.com", "2.0.0.1", 1);
+  eq(await call(w, "r@example.com", "2.0.0.2", 1), await call(w, "new@example.com", "2.0.0.3", 1), "same answer");
 });

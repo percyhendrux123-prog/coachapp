@@ -57,7 +57,15 @@ export function blockedReason(flags: unknown): "pregnancy" | "eating_disorder_hi
 // kept exactly as written and flags. "none, just lisinopril" is kept.
 export const MEDICATIONS_NONE_WORDS = ["none", "no", "n/a", "na", "nil", "nothing", "-"] as const;
 export function normalizeMedications(text: unknown): string {
-  const t = typeof text === "string" ? text.trim() : "";
+  if (text === null || text === undefined) return "";
+  // Not a string (an array of drugs, a number, an object from an assistant): never silently
+  // dropped. It is kept as text and flags (fail closed). Review round 1, finding 1.
+  if (typeof text !== "string") {
+    let s = "";
+    try { s = JSON.stringify(text) ?? String(text); } catch { s = String(text); }
+    return s && s !== '""' ? s : "[unreadable]";
+  }
+  const t = text.trim();
   if (!t) return "";
   const key = t.toLowerCase().replace(/[\s.,;:!?'"()]+/g, "");
   if ((MEDICATIONS_NONE_WORDS as readonly string[]).includes(key)) return "";

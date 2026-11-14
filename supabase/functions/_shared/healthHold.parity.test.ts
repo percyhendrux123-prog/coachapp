@@ -40,7 +40,9 @@ Deno.test("every flag the generator can store is known to the table", () => {
   for (const f of stored) if (![...SQL_DOCTOR_FIRST, ...SQL_BLOCKING].includes(f)) throw new Error("unknown stored id " + f);
 });
 Deno.test("normalizeMedications agrees and both generators skip a plain none", () => {
-  for (const t of ["none", " N/A ", "No.", "none, just lisinopril", "0.5mg x", "-", "--", ""]) eq(ts.normalizeMedications(t), jsNormalize(t), t);
+  for (const t of ["none", " N/A ", "No.", "none, just lisinopril", "0.5mg x", "-", "--", "", null, undefined, ["x"], 5, { a: 1 }, true]) eq(ts.normalizeMedications(t), jsNormalize(t), String(t));
+  eq(tsFlags({ medications: ["lisinopril"] }), ["medication_disclosed"], "TS array flags");
+  eq(jsFlags({ medications: ["lisinopril"] }), ["medication_disclosed"], "JS array flags");
   eq(tsFlags({ medications: "none" }), [], "TS none");
   eq(jsFlags({ medications: "none" }), [], "JS none");
   eq(tsFlags({ medications: "lisinopril" }), ["medication_disclosed"], "TS listed");

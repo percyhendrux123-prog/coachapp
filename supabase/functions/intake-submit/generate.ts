@@ -11,7 +11,7 @@ import {
   missingBodyMetrics as sharedMissingBodyMetrics, computeMacros as sharedComputeMacros,
   missingParq, computeHealthFlags, WEEKLY_LOSS_BANDS,
 } from "./mealMacros.ts";
-import { classifyFlags } from "../_shared/parq.ts";
+import { classifyFlags, normalizeMedications } from "../_shared/parq.ts";
 
 // Re-exported: intake-submit/index.ts imports missingParq from this file, not
 // directly from mealMacros.ts.
@@ -418,17 +418,35 @@ export function conservativeProfile(i: Intake): Intake {
 // none of them is blocking. The database already refused anything else; this is the second
 // lock, so a caller bug can never build past a blocking flag.
 export function generateConservativePlan(i: Intake, attestedFlags: string[]) {
-  const health_flags = computeHealthFlags(i);
-  if (health_flags.length === 0) throw new Error("conservative plan refused: this screen has no flags");
-  if (JSON.stringify([...health_flags].sort()) !== JSON.stringify([...(attestedFlags ?? [])].map(String).sort())) {
+  const attested = [...new Set((attestedFlags ?? []).map(String))];
+  if (attested.length === 0) throw new Error("conservative plan refused: nothing was confirmed");
+  if (classifyFlags(attested).blocking.length > 0) {
+    throw new Error("conservative plan refused: a flag on this screen never gets a self-serve plan");
+  }
+  const computed = computeHealthFlags(i);
+  if (classifyFlags(computed).blocking.length > 0) {
+    throw new Error("conservative plan refused: a flag on this screen never gets a self-serve plan");
+  }
+  // Every flag the answers raise today must be one the person confirmed.
+  const unconfirmed = computed.filter((f) => !attested.includes(f));
+  if (unconfirmed.length > 0) {
     throw new Error("conservative plan refused: the screen's flags are not the ones that were confirmed");
   }
-  if (classifyFlags(health_flags).blocking.length > 0) {
-    throw new Error("conservative plan refused: a flag on this screen never gets a self-serve plan");
+  // A confirmed flag the answers no longer raise is allowed in one case only: a screen stored
+  // before P33 with "none" typed in medications (stored as medication_disclosed; today's rule
+  // reads it as blank). Anything else means the answers changed — refuse. Review round 1.
+  const dropped = attested.filter((f) => !computed.includes(f));
+  const legacyNone = dropped.length === 1 && dropped[0] === "medication_disclosed"
+    && typeof (i as Record<string, unknown>).medications === "string"
+    && String((i as Record<string, unknown>).medications).trim() !== ""
+    && normalizeMedications((i as Record<string, unknown>).medications) === "";
+  if (dropped.length > 0 && !legacyNone) {
+    throw new Error("conservative plan refused: the screen's flags are not the ones that were confirmed");
   }
   const profile = conservativeProfile(i);
   const missing = missingBodyMetrics(profile);
   if (missing.length > 0) throw new Error("conservative plan refused: missing body metrics: " + missing.join(", "));
-  const plan = buildPlan(profile, health_flags, [CONSERVATIVE_RATIONALE]);
+  // The record keeps the flags the person confirmed.
+  const plan = buildPlan(profile, attested, [CONSERVATIVE_RATIONALE]);
   return { ...plan, conservative: true };
 }

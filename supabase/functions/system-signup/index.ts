@@ -17,6 +17,10 @@ import { clientIp, keyedHash, parseCap, runSignup, safeOrigin, type Deps } from 
 const RESEND_KEY = Deno.env.get("RESEND_API_KEY") || "";
 const FROM = Deno.env.get("SYSTEM_EMAIL_FROM") || Deno.env.get("EMAIL_FROM") || "Coach App <no-reply@example.com>";
 const ALLOWED_ORIGINS = allowedOrigins();
+// Links in the emails are built from the configured site address, never from the request's
+// Origin header (a script can send any Origin). Review round 1.
+const APP_ORIGIN = (Deno.env.get("APP_ORIGIN") || "").replace(/\/$/, "");
+const APP_IS_LOCAL = !APP_ORIGIN || /^https?:\/\/(localhost|127\.0\.0\.1)(:|$)/.test(APP_ORIGIN);
 
 
 async function sendEmail(to: string, m: { subject: string; text: string; html: string }, idempotencyKey: string): Promise<string | null> {
@@ -35,8 +39,9 @@ Deno.serve(async (req) => {
   if (req.method === "GET") return json({ ok: true, service: "system-signup" });
   if (req.method !== "POST") return json({ error: "POST only" }, 405);
 
-  const origin = safeOrigin(req.headers.get("origin") || "", ALLOWED_ORIGINS);
+  const origin = safeOrigin(req.headers.get("origin") || "", ALLOWED_ORIGINS, APP_IS_LOCAL);
   if (!origin) return json({ error: "origin not allowed" }, 403);
+  const linkBase = APP_ORIGIN || origin;
   let body: Record<string, unknown>;
   try { body = await req.json(); } catch { return json({ error: "bad json" }, 400); }
 
@@ -72,9 +77,9 @@ Deno.serve(async (req) => {
     },
     // &system=1 switches the intake page's wording only; intake-submit decides from the token.
     sendIntake: (email, clientId, token) =>
-      sendEmail(email, welcomeEmail({ intakeUrl: `${origin}/intake?token=${token}&system=1` }), `system-signup-${clientId}-${token.slice(0, 12)}`),
+      sendEmail(email, welcomeEmail({ intakeUrl: `${linkBase}/intake?token=${token}&system=1` }), `system-signup-${clientId}-${token.slice(0, 12)}`),
     sendSignIn: (email, clientId) =>
-      sendEmail(email, signInEmail({ loginUrl: `${origin}/login` }), `system-signup-${clientId}-signin-${new Date().toISOString().slice(0, 10)}`),
+      sendEmail(email, signInEmail({ loginUrl: `${linkBase}/login` }), `system-signup-${clientId}-signin-${new Date().toISOString().slice(0, 10)}`),
     mark: async (attemptId, decision) => {
       await db.from("system_signup_attempts").update({ decision }).eq("id", attemptId);
     },

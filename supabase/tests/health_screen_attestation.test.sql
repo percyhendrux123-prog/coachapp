@@ -216,7 +216,9 @@ do $$ begin
   if not has_function_privilege('authenticated', 'public.attest_my_health_screen(uuid, jsonb, text, text)', 'execute')
      or not has_function_privilege('authenticated', 'public.my_health_hold()', 'execute')
      or has_function_privilege('anon', 'public.attest_my_health_screen(uuid, jsonb, text, text)', 'execute')
-     or has_function_privilege('anon', 'public.my_health_hold()', 'execute') then
+     or has_function_privilege('anon', 'public.my_health_hold()', 'execute')
+     or has_function_privilege('anon', 'public.self_serve_doctor_first_flags()', 'execute')
+     or has_function_privilege('anon', 'public.health_statement_text(text)', 'execute') then
     raise exception 'TEST FAILED 20: grants';
   end if;
   raise notice 'ok 20 - grants: authenticated only';

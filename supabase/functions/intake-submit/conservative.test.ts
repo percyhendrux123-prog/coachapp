@@ -49,3 +49,20 @@ Deno.test("conservative plan refuses blocking, mismatched or empty flags", () =>
     if (!threw) throw new Error("built when it must refuse: " + JSON.stringify(f));
   }
 });
+
+Deno.test("a pre-P33 screen with 'none' typed in medications (stored as medication_disclosed) still builds", () => {
+  const legacy = { ...person, parq_chest_pain: true, medications: "none" };
+  const p: any = generateConservativePlan(legacy as any, ["parq_chest_pain", "medication_disclosed"]);
+  eq(p.held, false, "built");
+  eq(p.health_flags, ["parq_chest_pain", "medication_disclosed"], "the record keeps what was confirmed");
+  const onlyMeds: any = generateConservativePlan({ ...person, medications: "N/A" } as any, ["medication_disclosed"]);
+  eq(onlyMeds.conservative, true, "medication-only legacy screen builds conservative");
+});
+Deno.test("a confirmed flag the answers no longer raise is refused unless it is the legacy 'none'", () => {
+  let threw = false;
+  try { generateConservativePlan({ ...person } as any, ["parq_chest_pain"]); } catch { threw = true; }
+  eq(threw, true, "chest pain confirmed but answers say no: refused");
+  threw = false;
+  try { generateConservativePlan({ ...person } as any, ["medication_disclosed"]); } catch { threw = true; }
+  eq(threw, true, "medication confirmed but nothing typed: refused");
+});

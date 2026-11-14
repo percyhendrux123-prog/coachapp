@@ -54,5 +54,13 @@ export async function buildSelfServe(
 ): Promise<BuildResult> {
   const d = await insertDraft(db, intake, plan, "draft", false);
   if (!d.ok) return { ok: false, stage: "draft", error: d.error };
-  return await publishSelfServe(db, intake.client_id, d.draft.id, true);
+  const r = await publishSelfServe(db, intake.client_id, d.draft.id, true);
+  if (!r.ok) {
+    // Never leave an unpublished draft behind for a retry to stack on (review round 1): the
+    // meal-plan assembly reads the newest draft with macros.
+    await db.from("program_drafts").update({ status: "rejected", decided_at: new Date().toISOString(),
+      decision_note: "Publish failed; superseded by the next attempt." })
+      .eq("id", d.draft.id).eq("tenant_id", intake.tenant_id).eq("status", "draft");
+  }
+  return r;
 }

@@ -3832,12 +3832,23 @@ const CLIENT_TOOLS: Tool[] = [
   },
   {
     name: "regenerate_my_plan",
-    description: "Rebuild YOUR week and targets from new inputs. Re-asks the health screen: every PAR-Q answer must be given again; any yes stops the build and the person finishes the health step in the app themselves (an assistant cannot answer the health screen or confirm clearance). Allowed once every 28 days after a plan was built. Self-serve owner tokens only.",
+    description: "Rebuild YOUR week and targets from new inputs. Re-asks the health screen: every PAR-Q answer must be given again; any yes stops the build and the person finishes the health step in the app themselves (an assistant cannot answer the health screen or confirm clearance; while the latest screen is on hold this tool refuses). Allowed once every 28 days after a plan was built. Self-serve owner tokens only.",
     inputSchema: obj({
       answers: { type: "object", description: "Full intake answers: sex, age, height_cm, weight_kg, goal, days_per_week, equipment, experience, unit_pref, height_raw, weight_raw, injuries, plus every PAR-Q key (parq_heart_condition, parq_chest_pain, parq_dizziness, parq_bone_joint, parq_bp_meds, parq_other_reason, pregnant, eating_disorder_history) and optional medications." },
     }, ["answers"]),
     write: true, scope: "owner",
     run: async (ctx, a) => {
+      // P33 (review round 1): while the person's latest health screen is on hold or not
+      // eligible, an assistant cannot re-answer it. The person does that in the app.
+      const { data: latest } = await admin().from("intake_forms").select("id, health_flags")
+        .eq("client_id", ctx.clientId!).eq("tenant_id", ctx.tenantId).eq("status", "submitted")
+        .order("submitted_at", { ascending: false, nullsFirst: false }).order("created_at", { ascending: false }).limit(1);
+      const li = latest?.[0];
+      if (li && Array.isArray(li.health_flags) && li.health_flags.length > 0) {
+        const { data: built } = await admin().from("program_drafts").select("id")
+          .eq("intake_id", li.id).eq("tenant_id", ctx.tenantId).eq("status", "published").limit(1);
+        if (!built?.length) return { status: "health_hold", message: W9_TEXT };
+      }
       const { data: token, error: tErr } = await admin().rpc("mint_intake_token_for_client", { p_client_id: ctx.clientId });
       if (tErr) {
         const m = tErr.message || "";

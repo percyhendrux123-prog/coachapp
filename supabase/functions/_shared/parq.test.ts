@@ -60,3 +60,11 @@ Deno.test("normalizeMedications: anything else is kept as written", () => {
 Deno.test("screenOutcome: 'none' in medications is not a flag", () => {
   eq(screenOutcome({ ...allNo, medications: "None." }), { ok: true, flags: [] }, "clear");
 });
+
+Deno.test("normalizeMedications: a non-string value is never dropped (fail closed)", () => {
+  for (const v of [["lisinopril"], 5, { n: "x" }, true, false, []]) {
+    if (normalizeMedications(v) === "") throw new Error("dropped " + JSON.stringify(v));
+    eq(screenOutcome({ ...allNo, medications: v } as any).ok, false, "flags " + JSON.stringify(v));
+  }
+  eq(normalizeMedications(undefined), "", "undefined is blank");
+});

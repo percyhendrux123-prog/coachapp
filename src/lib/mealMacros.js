@@ -88,7 +88,14 @@ export function missingParq(i) {
 // Twin of normalizeMedications in supabase/functions/_shared/parq.ts (healthHold.parity.test.ts).
 const MEDICATIONS_NONE_WORDS = ["none", "no", "n/a", "na", "nil", "nothing", "-"];
 export function normalizeMedications(text) {
-  const t = typeof text === "string" ? text.trim() : "";
+  if (text === null || text === undefined) return "";
+  // Not a string: never silently dropped; kept as text so it flags (fail closed).
+  if (typeof text !== "string") {
+    let s = "";
+    try { s = JSON.stringify(text) ?? String(text); } catch { s = String(text); }
+    return s && s !== '""' ? s : "[unreadable]";
+  }
+  const t = text.trim();
   if (!t) return "";
   const key = t.toLowerCase().replace(/[\s.,;:!?'"()]+/g, "");
   if (MEDICATIONS_NONE_WORDS.includes(key)) return "";

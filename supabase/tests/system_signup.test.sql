@@ -55,6 +55,22 @@ do $$ declare g jsonb; n int; begin
   raise notice 'ok 4 - the daily cap pauses signups';
 end $$;
 
+-- 4d. while paused, an address that already got an email today gets the same paused answer.
+do $$ declare g jsonb; begin
+  g := public.system_signup_gate((select v from h where k='e1'), repeat('6', 64), 0);
+  if g->>'decision' <> 'paused' then raise exception 'TEST FAILED 4d: %', g; end if;
+  raise notice 'ok 4d - paused answers the same for a recent address';
+end $$;
+
+-- 4e. rows older than 7 days are pruned on the next call.
+do $$ declare g jsonb; n int; begin
+  insert into public.system_signup_attempts (email_hash, ip_hash, decision, created_at) values (repeat('f', 64), repeat('5', 64), 'sent', now() - interval '8 days');
+  g := public.system_signup_gate(repeat('e', 64), repeat('4', 64), 50);
+  select count(*) into n from public.system_signup_attempts where created_at < now() - interval '7 days';
+  if n <> 0 then raise exception 'TEST FAILED 4e: % old rows kept', n; end if;
+  raise notice 'ok 4e - attempts older than 7 days are deleted';
+end $$;
+
 -- 5. the gate refuses missing hashes.
 do $$ begin
   begin perform public.system_signup_gate('short', repeat('1', 64), 50); raise exception 'TEST FAILED 5';
