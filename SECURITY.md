@@ -25,9 +25,17 @@ can manage. This is a volunteer project with no bounty.
   their own doctor or licensed health professional cleared them; that confirmation is recorded
   (`health_screen_attestations`) and only the database function `attest_my_health_screen` can
   write it, with the person's own session. No coach, connector token, AI assistant or service key
-  can confirm it. Pregnancy, an eating-disorder history, or any answer the table does not know
-  never gets a self-serve plan.
+  can confirm it. A screen with pregnancy, an eating-disorder history, or any answer the table does
+  not know never gets a self-serve plan. It is still self-report: the person can answer the
+  intake again (a held or not-eligible screen does not start the 28-day re-intake clock), and the
+  app cannot know whether the new answers are true. While the latest screen is on hold, the AI
+  connector cannot re-answer it.
 - The free signup (`system-signup`) never returns the intake link to the browser; it goes by email
   only. It answers the same way for a new address and one that already has a plan, so it cannot
-  be used to find out who has an account. Limits: one email per address per 24 hours, 5 tries an
-  hour per network address (stored only as a keyed hash), and `SYSTEM_SIGNUP_DAILY_CAP` a day.
+  be used to find out who has an account (response times still differ a little between a new
+  and an existing address). Limits: one email per address per 24 hours, 5 tries an hour per
+  network address (stored only as a keyed hash), and `SYSTEM_SIGNUP_DAILY_CAP` a day. The
+  per-network-address limit reads `cf-connecting-ip`, then `x-real-ip`, then the last
+  `x-forwarded-for` entry. That is right on Supabase's hosted edge; on any other host, check which
+  header your proxy sets and overwrites before relying on it. `APP_ORIGIN` must be set: the
+  email links are built from it, and signup refuses without it.

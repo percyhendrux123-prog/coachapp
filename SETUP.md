@@ -305,6 +305,7 @@ You can add these any time. Each one is separate.
   (deploy it with JWT verification off; its `config.toml` says so) and `system-clearance` (JWT
   verification on). `SYSTEM_SIGNUP_DAILY_CAP` in **Edge Functions > Secrets** caps the signup
   emails sent in any 24 hours (default 50; `0` pauses signups). Read COSTS.md before you raise it.
+  `APP_ORIGIN` must be set to your site address; signup refuses without it.
 - **Payments with Stripe.** Create your products and prices in Stripe, then set the
   `STRIPE_*` settings listed in `.env.example` in Supabase **Edge Functions > Secrets**, and add a
   Stripe webhook for `checkout.session.completed` pointing at

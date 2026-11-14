@@ -109,7 +109,7 @@ Deno.test("cap parsing and IP reading", () => {
 });
 
 Deno.test("aliases of one mailbox share the one-email-a-day limit", async () => {
-  eq([limitKey("a.b+x@gmail.com"), limitKey("ab@googlemail.com"), limitKey("a.b+y@example.com")], ["ab@gmail.com", "ab@gmail.com", "a.b@example.com"], "keys");
+  eq([limitKey("a.b+x@gmail.com"), limitKey("ab@googlemail.com"), limitKey("a.b+y@example.com"), limitKey("x@gmail.com.")], ["ab@gmail.com", "ab@gmail.com", "a.b@example.com", "x@gmail.com"], "keys");
   const w = world();
   await call(w, "sam+1@example.com", "1.0.0.1");
   eq(await call(w, "sam+2@example.com", "1.0.0.2"), { status: 200, body: { ok: true } }, "same answer");

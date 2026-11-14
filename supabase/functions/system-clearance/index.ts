@@ -97,12 +97,13 @@ Deno.serve(async (req) => {
       await db.from("health_clearance_builds").update({ draft_id: draftId }).eq("attestation_id", attestationId);
       // The held draft for this screen is done with. The draft status enum has no
       // 'superseded'; 'rejected' with a note is the nearest existing value.
+      const { data: i } = await db.from("intake_forms").select("tenant_id, client_id").eq("id", intakeId).maybeSingle();
+      if (!i) return;
       await db.from("program_drafts").update({
         status: "rejected", decided_at: new Date().toISOString(),
         decision_note: "Superseded: a conservative plan was built after the person confirmed their own doctor's clearance in the app (P33). Nobody reviewed the health answers.",
-      }).eq("intake_id", intakeId).eq("status", "held_medical");
-      const { data: i } = await db.from("intake_forms").select("tenant_id, client_id").eq("id", intakeId).maybeSingle();
-      if (i) {
+      }).eq("intake_id", intakeId).eq("tenant_id", i.tenant_id).eq("client_id", i.client_id).eq("status", "held_medical");
+      {
         const { error } = await db.from("notification_log").insert({
           tenant_id: i.tenant_id, client_id: i.client_id, channel: "push", template: "system_clearance_built",
           status: "recorded", consent_snapshot: { intake_id: intakeId, draft_id: draftId, attestation_id: attestationId },

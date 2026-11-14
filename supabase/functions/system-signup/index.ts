@@ -20,7 +20,7 @@ const ALLOWED_ORIGINS = allowedOrigins();
 // Links in the emails are built from the configured site address, never from the request's
 // Origin header (a script can send any Origin). Review round 1.
 const APP_ORIGIN = (Deno.env.get("APP_ORIGIN") || "").replace(/\/$/, "");
-const APP_IS_LOCAL = !APP_ORIGIN || /^https?:\/\/(localhost|127\.0\.0\.1)(:|$)/.test(APP_ORIGIN);
+const APP_IS_LOCAL = /^https?:\/\/(localhost|127\.0\.0\.1)(:|$)/.test(APP_ORIGIN);
 
 
 async function sendEmail(to: string, m: { subject: string; text: string; html: string }, idempotencyKey: string): Promise<string | null> {
@@ -39,9 +39,11 @@ Deno.serve(async (req) => {
   if (req.method === "GET") return json({ ok: true, service: "system-signup" });
   if (req.method !== "POST") return json({ error: "POST only" }, 405);
 
+  // Fail closed: without the site address the email links would come from the request.
+  if (!APP_ORIGIN) return json({ error: "Signup is not configured (APP_ORIGIN is not set)." }, 500);
   const origin = safeOrigin(req.headers.get("origin") || "", ALLOWED_ORIGINS, APP_IS_LOCAL);
   if (!origin) return json({ error: "origin not allowed" }, 403);
-  const linkBase = APP_ORIGIN || origin;
+  const linkBase = APP_ORIGIN;
   let body: Record<string, unknown>;
   try { body = await req.json(); } catch { return json({ error: "bad json" }, 400); }
 

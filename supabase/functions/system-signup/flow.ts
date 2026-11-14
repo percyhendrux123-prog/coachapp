@@ -48,7 +48,7 @@ export function clientIp(headers: Headers): string {
 // dots too, so aliases of one mailbox share one limit. Only the hash input changes; the email
 // is still sent to the address exactly as typed.
 export function limitKey(email: string): string {
-  const [local, domain] = [email.slice(0, email.lastIndexOf("@")), email.slice(email.lastIndexOf("@") + 1)];
+  const [local, domain] = [email.slice(0, email.lastIndexOf("@")), email.slice(email.lastIndexOf("@") + 1).replace(/\.+$/, "")];
   let l = local.split("+")[0];
   const d = domain === "googlemail.com" ? "gmail.com" : domain;
   if (d === "gmail.com") l = l.replace(/\./g, "");

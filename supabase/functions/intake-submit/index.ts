@@ -135,7 +135,8 @@ async function processSubmission(intake: any, answers: any): Promise<Response> {
         if (error) console.error("intake-submit notify: notification_log insert failed:", error.message);
       };
       if (health.status === "blocked_health") {
-        await log("system_blocked_health", { intake_id: intake.id, reason: health.reason });
+        // The reason (pregnancy / eating-disorder history) is not copied into the log (review round 2).
+        await log("system_blocked_health", { intake_id: intake.id });
         return json(blockedBody(intake.id, health.reason));
       }
       const held = await insertDraft(admin, intake, plan, "held_medical", false);
