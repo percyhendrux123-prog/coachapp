@@ -210,4 +210,4 @@ request to one change with tests, and never commit real client data or secrets. 
 
 ## License
 
-MIT. See `LICENSE`.
+MIT. See `LICENSE`. Names and marks are not licensed; see `TRADEMARKS.md`.
